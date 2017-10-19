@@ -130,7 +130,7 @@ public class InMoovGui extends ServiceGui implements ActionListener {
     } else if (o == rightArm) {
       processAction(rightArm, "right", "arm");
     } else if (o == head) {
-      processAction(head, "left", "head");
+      processAction(head, "right", "head");
     } else {
       log.error("unkown event");
     }

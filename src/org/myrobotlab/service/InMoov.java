@@ -77,10 +77,6 @@ public class InMoov extends Service {
   // Dynamic reflective services such as WebGui & Xmpp are to be left out of
   // Peer definitions
 
-  String defaultLeftPort; // FIXME - THIS IS A BUG GET RID OF IT - ALL ACCESS
-  // THROUGH MAP !!!
-  String defaultRightPort; // FIXME - THIS IS A BUG GET RID OF IT - ALL ACCESS
-
   // THROUGH MAP !!!
   // FIXME ALL PEERS NEED TO BE PRIVATE - ACCESS THROUGH GETTERS WHICH DO A
   // Runtime.create !
@@ -1085,10 +1081,10 @@ public class InMoov extends Service {
   public void startAll(String leftPort, String rightPort) throws Exception {
     // TODO add vision
     startMouth();
-    startHead(leftPort);
+    startHead(rightPort);
     startEar();
 
-    startMouthControl(leftPort);
+    startMouthControl(rightPort);
 
     startLeftHand(leftPort);
     startRightHand(rightPort);
@@ -1097,8 +1093,8 @@ public class InMoov extends Service {
     startRightArm(rightPort);
     startTorso(leftPort);
 
-    startHeadTracking(leftPort, 12, 13);
-    startEyesTracking(leftPort, 22, 24);
+    startHeadTracking(rightPort, 12, 13);
+    startEyesTracking(rightPort, 22, 24);
 
     speakBlocking("startup sequence completed");
   }
@@ -1810,13 +1806,13 @@ public class InMoov extends Service {
     try {
       LoggingFactory.init(Level.INFO);
 
-      String leftPort = "COM3";
-      String rightPort = "COM4";
+      String leftPort = "COM4";
+      String rightPort = "COM3";
 
       VirtualArduino vleft = (VirtualArduino) Runtime.start("vleft", "VirtualArduino");
       VirtualArduino vright = (VirtualArduino) Runtime.start("vright", "VirtualArduino");
-      vleft.connect("COM3");
-      vright.connect("COM4");
+      vleft.connect(leftPort);
+      vright.connect(rightPort);
       Runtime.start("gui", "SwingGui");
 
       InMoov i01 = (InMoov) Runtime.start("i01", "InMoov");
@@ -1844,10 +1840,8 @@ public class InMoov extends Service {
     meta.addDependency("org.myrobotlab.inmoov", "0.5.5");
 
     // SHARING !!! - modified key / actual name begin -------
-    meta.sharePeer("head.arduino", "left", "Arduino", "shared left arduino");
+    meta.sharePeer("head.arduino", "right", "Arduino", "shared right arduino");
     meta.sharePeer("torso.arduino", "left", "Arduino", "shared left arduino");
-
-    meta.sharePeer("mouthControl.arduino", "left", "Arduino", "shared left arduino");
 
     meta.sharePeer("leftArm.arduino", "left", "Arduino", "shared left arduino");
     meta.sharePeer("leftHand.arduino", "left", "Arduino", "shared left arduino");
@@ -1857,16 +1851,16 @@ public class InMoov extends Service {
     meta.sharePeer("rightHand.arduino", "right", "Arduino", "shared right arduino");
 
     meta.sharePeer("eyesTracking.opencv", "opencv", "OpenCV", "shared head OpenCV");
-    meta.sharePeer("eyesTracking.controller", "left", "Arduino", "shared head Arduino");
+    meta.sharePeer("eyesTracking.controller", "right", "Arduino", "shared head Arduino");
     meta.sharePeer("eyesTracking.x", "head.eyeX", "Servo", "shared servo");
     meta.sharePeer("eyesTracking.y", "head.eyeY", "Servo", "shared servo");
 
     meta.sharePeer("headTracking.opencv", "opencv", "OpenCV", "shared head OpenCV");
-    meta.sharePeer("headTracking.controller", "left", "Arduino", "shared head Arduino");
+    meta.sharePeer("headTracking.controller", "right", "Arduino", "shared head Arduino");
     meta.sharePeer("headTracking.x", "head.rothead", "Servo", "shared servo");
     meta.sharePeer("headTracking.y", "head.neck", "Servo", "shared servo");
 
-    meta.sharePeer("mouthControl.arduino", "left", "Arduino", "shared head Arduino");
+    meta.sharePeer("mouthControl.arduino", "right", "Arduino", "shared head Arduino");
     meta.sharePeer("mouthControl.mouth", "mouth", speechService, "shared Speech");
     meta.sharePeer("mouthControl.jaw", "head.jaw", "Servo", "shared servo");
     // SHARING !!! - modified key / actual name end ------
@@ -2167,9 +2161,9 @@ public class InMoov extends Service {
     im.addObject("Rwristdown", 70);
     im.objectAddIgnore("i01.rightArm.bicep", "Rwristup");
 
-    im.startEngine("leftArm");
+    //im.startEngine("leftArm");
     im.startEngine("rightArm");
-    im.startEngine("kinect");
+    //im.startEngine("kinect");
 
     im.cog = new GravityCenter(im);
     im.cog.setLinkMass("i01.torso.midStom", 2.832, 0.5);

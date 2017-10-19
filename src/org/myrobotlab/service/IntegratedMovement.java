@@ -159,7 +159,9 @@ public class IntegratedMovement extends Service implements IKJointAnglePublisher
     else {
       log.info("unknow arm {}", arm);
     }
-    jmeApp.addPoint(point);
+    if (jmeApp != null) {
+    	jmeApp.addPoint(point);
+    }
   }
 
   /**
