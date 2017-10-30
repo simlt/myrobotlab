@@ -13,6 +13,7 @@ import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSlider;
+import javax.swing.JTextField;
 import javax.swing.JTextPane;
 import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
@@ -22,7 +23,6 @@ import org.myrobotlab.kinematics.Point;
 import org.myrobotlab.logging.LoggerFactory;
 import org.myrobotlab.service.InverseKinematics3D;
 import org.myrobotlab.service.SwingGui;
-import org.myrobotlab.swing.InverseKinematics3DGui.FrameList;
 import org.slf4j.Logger;
 
 /**
@@ -34,9 +34,9 @@ public class InverseKinematics3DGui extends ServiceGui implements ActionListener
   public final static Logger log = LoggerFactory.getLogger(InverseKinematics3DGui.class);
   // private InverseKinematics3D ik;
   private Point tcpPos;
-  private JTextPane xPos;
-  private JTextPane yPos;
-  private JTextPane zPos;
+  private JTextField xPos;
+  private JTextField yPos;
+  private JTextField zPos;
   private FrameList selectedFrame;
   private double[][] tcpPosList;
 
@@ -103,7 +103,7 @@ public class InverseKinematics3DGui extends ServiceGui implements ActionListener
       selectedFrame = (FrameList) cb.getSelectedItem();
       updateTcpLabel();
     });
-    //comboBox.setSelectedIndex(0);
+    comboBox.setSelectedIndex(0);
     axisBox.add(comboBox);
 
     Box posBox = Box.createHorizontalBox();
@@ -112,7 +112,7 @@ public class InverseKinematics3DGui extends ServiceGui implements ActionListener
     JLabel lblX = new JLabel("x");
     posBox.add(lblX);
     lblX.setLabelFor(xPos);
-    xPos = new JTextPane();
+    xPos = new JTextField();
     posBox.add(xPos);
 
     Component horizontalStrut = Box.createHorizontalStrut(20);
@@ -120,7 +120,7 @@ public class InverseKinematics3DGui extends ServiceGui implements ActionListener
 
     JLabel lblY = new JLabel("y");
     posBox.add(lblY);
-    yPos = new JTextPane();
+    yPos = new JTextField();
     lblY.setLabelFor(yPos);
     posBox.add(yPos);
 
@@ -129,7 +129,7 @@ public class InverseKinematics3DGui extends ServiceGui implements ActionListener
 
     JLabel lblZ = new JLabel("z");
     posBox.add(lblZ);
-    zPos = new JTextPane();
+    zPos = new JTextField();
     lblZ.setLabelFor(zPos);
     posBox.add(zPos);
 
@@ -256,6 +256,9 @@ public class InverseKinematics3DGui extends ServiceGui implements ActionListener
   }
 
   private void updateTcpLabel() {
+    if (tcpPosList == null) {
+      return;
+    }
     int index;
     if (selectedFrame.equals(FrameList.ArmFrame)) {
       index = 0;
