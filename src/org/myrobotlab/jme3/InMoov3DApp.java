@@ -18,6 +18,8 @@ import org.python.jline.internal.Log;
 
 import com.jme3.app.SimpleApplication;
 import com.jme3.asset.plugins.FileLocator;
+import com.jme3.font.BitmapFont;
+import com.jme3.font.BitmapText;
 import com.jme3.input.KeyInput;
 import com.jme3.input.MouseInput;
 import com.jme3.input.controls.AnalogListener;
@@ -37,8 +39,6 @@ import com.jme3.scene.shape.Cylinder;
 import com.jme3.system.AppSettings;
 import com.jme3.texture.Texture2D;
 import com.jme3.ui.Picture;
-import com.jme3.font.BitmapFont;
-import com.jme3.font.BitmapText;
 
 /**
  * @author Christian version 1.0.3
@@ -301,8 +301,9 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
     node.setUserData("rotationMask_y", rotationMask.y);
     node.setUserData("rotationMask_z", rotationMask.z);
     node.setUserData("currentAngle", 0);
-    Vector3f angle = rotationMask.mult((float) Math.toRadians(6));
-    node.rotate(angle.x, angle.y, angle.z);
+    Vector3f angle;
+    //angle = rotationMask.mult((float) Math.toRadians(6));
+    //node.rotate(angle.x, angle.y, angle.z);
     nodes.put("Romoplate", node);
     maps.put("Romoplate", new Mapper(0, 180, 10, 70));
 
@@ -318,8 +319,8 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
     node.setUserData("rotationMask_y", rotationMask.y);
     node.setUserData("rotationMask_z", rotationMask.z);
     node.setUserData("currentAngle", 0);
-    angle = rotationMask.mult((float) Math.toRadians(-2));
-    node.rotate(angle.x, angle.y, angle.z);
+    //angle = rotationMask.mult((float) Math.toRadians(-30));
+    //node.rotate(angle.x, angle.y, angle.z);
     nodes.put("Rshoulder", node);
     maps.put("Rshoulder", new Mapper(0, 180, 0, 180));
 
@@ -335,6 +336,8 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
     node.setUserData("rotationMask_y", rotationMask.y);
     node.setUserData("rotationMask_z", rotationMask.z);
     node.setUserData("currentAngle", 0);
+    angle = rotationMask.mult((float) Math.toRadians(-90));
+    node.rotate(angle.x, angle.y, angle.z);
     nodes.put("Rrotate", node);
     maps.put("Rrotate", new Mapper(0, 180, 46, 160));
 
@@ -489,8 +492,8 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
     node.setUserData("rotationMask_y", rotationMask.y);
     node.setUserData("rotationMask_z", rotationMask.z);
     node.setUserData("currentAngle", 0);
-    angle = rotationMask.mult((float) Math.toRadians(2));
-    node.rotate(angle.x, angle.y, angle.z);
+    //angle = rotationMask.mult((float) Math.toRadians(2));
+    //node.rotate(angle.x, angle.y, angle.z);
     nodes.put("rollNeck", node);
     maps.put("rollNeck", new Mapper(0, 180, 60, 115));
 
@@ -521,8 +524,8 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
     node.setUserData("rotationMask_y", rotationMask.y);
     node.setUserData("rotationMask_z", rotationMask.z);
     node.setUserData("currentAngle", 0);
-    angle = rotationMask.mult((float) Math.toRadians(5));
-    node.rotate(angle.x, angle.y, angle.z);
+    //angle = rotationMask.mult((float) Math.toRadians(5));
+    //node.rotate(angle.x, angle.y, angle.z);
     nodes.put("jaw", node);
     maps.put("jaw", new Mapper(0, 180, 60, 90));
 
@@ -732,7 +735,20 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
       Node node = nodes.get(partName);
       Mapper map = maps.get(partName);
       map.setMinMaxInput(servo.getMinInput(), servo.getMaxInput());
-      double angle = -map.calcOutput(servo.getRest()) + map.calcOutput(servo.getCurrentPos());
+      double restAngle = map.calcOutput(servo.getRest());
+      // FIXME The rest position angle shouldn't be considered here but it should be set at model load so it can be configured independently.
+      // Overriding angles for some parts
+      switch (partName) {
+      case "Romoplate":
+      case "Rshoulder":
+      case "Rrotate":
+      case "Rbicep":
+        restAngle = 0;
+        break;
+      default:
+        break;
+      }
+      double angle = -restAngle + map.calcOutput(servo.getCurrentPos());
       angle *= Math.PI / 180;
       Vector3f rotMask = new Vector3f((float) node.getUserData("rotationMask_x"), (float) node.getUserData("rotationMask_y"), (float) node.getUserData("rotationMask_z"));
       Vector3f rotAngle = rotMask.mult((float) angle);
@@ -852,4 +868,68 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
     }
   }
 
+  public void setArmGeometry(String side, double[][] dhParams) {
+    Node shoulder;
+    Node rotate;
+    Node bicep;
+    Node wrist;
+    if (side.equals("RIGHT")) {
+      shoulder = nodes.get("Rshoulder");
+      rotate = nodes.get("Rrotate");
+      bicep = nodes.get("Rbicep");
+      wrist = nodes.get("RWrist");
+    } else {
+      Log.error("Unsupported side %s", side);
+      return;
+    }
+
+    // Servo inputs are already mapped to real world angles, se no need to
+    // anything with mappers (map 1 to 1)
+    Mapper mapper = new Mapper(0, 180, 0, 180);
+    maps.put("Romoplate", mapper);
+    maps.put("Rshoulder", mapper);
+    maps.put("Rrotate", mapper);
+    maps.put("Rbicep", mapper);
+    maps.put("RWrist", mapper);
+
+    Vector3f translation = shoulder.getLocalTranslation();
+    float shoulderXoffset = translation.x;
+    // Omoplate length (a)
+    translation.y = (float) dhParams[0][2];
+    shoulder.setLocalTranslation(translation);
+
+    translation = rotate.getLocalTranslation();
+    float rotateYoffset = translation.y;
+    // Rotate offset (d)
+    translation.x = (float) (-shoulderXoffset - dhParams[1][0]);
+    rotate.setLocalTranslation(translation);
+
+    translation = bicep.getLocalTranslation();
+    // Bicep offset (d)
+    translation.y = (float) (-rotateYoffset - dhParams[2][0]);
+    // Rotate length (a)
+    translation.z = (float) (-dhParams[2][2]);
+    bicep.setLocalTranslation(translation);
+
+    translation = wrist.getLocalTranslation();
+    // Bicep length (a)
+    translation.y = (float) (dhParams[3][2]);
+    // TODO check if wrist is offset
+    // Rotate
+    // translation.z = (float) (-bicepZoffset - dhParams[3][0]);
+    // length (a)
+    wrist.setLocalTranslation(translation);
+  }
+
+  public float[] getVirtualArmOrigin() {
+    // Get arm origin coordinate
+    float[] origin = new float[3];
+    if (nodes.containsKey("omoplateR")) {
+      Node node = nodes.get("omoplateR");
+      if (node != null) {
+        node.getWorldTranslation().toArray(origin);
+      }
+    }
+    return origin;
+  }
 }

@@ -45,16 +45,89 @@ public class InverseKinematics3D extends Service implements IKJointAnglePublishe
   private Point joystickLinearVelocity = new Point(0, 0, 0, 0, 0, 0);
 
   private Matrix inputMatrix = null;
-  private Matrix invBaseMatrix = null;
+  private Matrix baseToWorldTransform = null;
+  private Point virtualArmOrigin = null;
+  private Point worldToVirtualTranslation = new Point(0, 0, 0, 0, 0, 0);
 
   transient private InMoov3DApp vinMoovApp = null;
 
   transient InputTrackingThread trackingThread = null;
 
   enum CoordinateFrame {
-	  WORLD,       // World fixed
-	  BASE_ARM,    // Arm base joint frame
-	  // LOCAL     // TCP mobile frame
+    WORLD, // World fixed
+    WORLD_VIRTUAL, BASE_ARM, // Arm base joint frame
+    // LOCAL // TCP mobile frame
+  }
+
+  /**
+   * A class to abstract the reference frame of the points and to convert
+   * between them. The stored point is in WORLD coordinates.
+   */
+  class Position extends Point {
+    private static final long serialVersionUID = 1L;
+
+    Position(double x, double y, double z, CoordinateFrame frame) {
+      super(x, y, z, 0, 0, 0);
+      toWorld(frame);
+    }
+
+    // Convert the point to WORLD coordinates
+    Position(Point p, CoordinateFrame frame) {
+      super(p);
+      toWorld(frame);
+    }
+
+    private void toWorld(CoordinateFrame inputFrame) {
+      switch (inputFrame) {
+      case WORLD:
+        break;
+      case BASE_ARM:
+        if (baseToWorldTransform != null) {
+          Matrix tr = new Matrix(4, 1);
+          tr.elements[0][0] = getX();
+          tr.elements[1][0] = getY();
+          tr.elements[2][0] = getZ();
+          tr.elements[3][0] = 1;
+          tr = baseToWorldTransform.multiply(tr);
+          setX(tr.elements[0][0]);
+          setY(tr.elements[1][0]);
+          setZ(tr.elements[2][0]);
+        }
+        break;
+      case WORLD_VIRTUAL:
+        Point point = subtract(worldToVirtualTranslation);
+        setX(point.getX());
+        setY(point.getY());
+        setZ(point.getZ());
+        break;
+      }
+    }
+
+    public Point getPoint(CoordinateFrame frame) {
+      Point ret = new Point(this);
+      switch (frame) {
+      case WORLD:
+        break;
+      case BASE_ARM:
+        Matrix tr = new Matrix(4, 1);
+        tr.elements[0][0] = getX();
+        tr.elements[1][0] = getY();
+        tr.elements[2][0] = getZ();
+        tr.elements[3][0] = 1;
+        tr = baseToWorldTransform.homogeneousTransformInverse().multiply(tr);
+        ret.setX(tr.elements[0][0]);
+        ret.setY(tr.elements[1][0]);
+        ret.setZ(tr.elements[2][0]);
+        break;
+      case WORLD_VIRTUAL:
+        Point point = add(worldToVirtualTranslation);
+        ret.setX(point.getX());
+        ret.setY(point.getY());
+        ret.setZ(point.getZ());
+        break;
+      }
+      return ret;
+    }
   }
 
   public InverseKinematics3D(String n) {
@@ -76,7 +149,10 @@ public class InverseKinematics3D extends Service implements IKJointAnglePublishe
           InMoov inMoov = (InMoov) Runtime.getService("i01");
           try {
             vinMoovApp = inMoov.startVinMoov();
-            vinMoovApp.setArmGeometry(side, dhParams);
+            // Update geometry from the owning thread
+            inMoov.invoke("setArmGeometry", side, dhParams);
+            float[] virtualArmOriginF = vinMoovApp.getVirtualArmOrigin();
+            virtualArmOrigin = new Point(virtualArmOriginF[0], virtualArmOriginF[1], virtualArmOriginF[2], 0, 0, 0);
           } catch (InterruptedException e) {
           }
         }
@@ -169,6 +245,18 @@ public class InverseKinematics3D extends Service implements IKJointAnglePublishe
     moveTo(new Point(x, y, z, 0, 0, 0));
   }
 
+  public void moveTo(double x, double y, double z, String frameStr) {
+    CoordinateFrame frame;
+    try {
+      frame = CoordinateFrame.valueOf(frameStr);
+    } catch (IllegalArgumentException e) {
+      log.error("moveTo is unable to find the coordinate frame for name: %s. Defaulting to WORLD", frameStr);
+      frame = CoordinateFrame.WORLD;
+    }
+    Position position = new Position(new Point(x, y, z, 0, 0, 0), frame);
+    moveTo(position);
+  }
+
   /**
    * This create a rotation and translation matrix that will be applied on the
    * "moveTo" call.
@@ -196,7 +284,7 @@ public class InverseKinematics3D extends Service implements IKJointAnglePublishe
     inputMatrix = trMatrix.multiply(rotMatrix);
     return inputMatrix;
   }
-  
+
   /**
    * Sets the fixed position of the arm base joint in world frame
    */
@@ -206,31 +294,26 @@ public class InverseKinematics3D extends Service implements IKJointAnglePublishe
     yaw = MathUtils.degToRad(yaw);
     Matrix trMatrix = Matrix.translation(dx, dy, dz);
     Matrix rotMatrix = Matrix.zRotation(yaw).multiply(Matrix.yRotation(pitch)).multiply(Matrix.xRotation(roll));
-    invBaseMatrix = trMatrix.multiply(rotMatrix).homogeneousTransformInverse();
+    baseToWorldTransform = trMatrix.multiply(rotMatrix);
+    Point armOrigin = new Point(dx, dy, dz, 0, 0, 0);
+    worldToVirtualTranslation = armOrigin.subtract(virtualArmOrigin);
   }
 
   /**
-   * @param pIn point to be transformed
-   * @param inFrame Input coordinate frame
-   * @return point in the BASE_ARM frame, which is used by the inverse kinematics solver
+   * @param pIn
+   *          point to be transformed
+   * @param inFrame
+   *          Input coordinate frame
+   * @return point in the BASE_ARM frame, which is used by the inverse
+   *         kinematics solver
    */
   // TODO Maybe move this and make it support any output frame
-  public Point rotateAndTranslate(Point pIn, CoordinateFrame inFrame) {
+  public Point rotateAndTranslate(Point pIn) {
     Matrix pOM = new Matrix(4, 1);
     pOM.elements[0][0] = pIn.getX();
     pOM.elements[1][0] = pIn.getY();
     pOM.elements[2][0] = pIn.getZ();
     pOM.elements[3][0] = 1;
-    switch (inFrame) {
-    case WORLD:
-      if (invBaseMatrix != null) {
-        pOM = invBaseMatrix.multiply(pOM);
-      }
-      break;
-    case BASE_ARM:
-      // DO nothing
-      break;
-    }
 
     // apply final transform
     if (inputMatrix != null) {
@@ -257,16 +340,16 @@ public class InverseKinematics3D extends Service implements IKJointAnglePublishe
   }
 
   public void moveTo(Point p) {
-    moveTo(p, CoordinateFrame.BASE_ARM);
+    moveTo(new Position(p, CoordinateFrame.BASE_ARM));
   }
 
-  public void moveTo(Point p, CoordinateFrame f) {
-    p = rotateAndTranslate(p, f);
+  public void moveTo(Position pos) {
+    Point p = rotateAndTranslate(pos.getPoint(CoordinateFrame.BASE_ARM));
     boolean success = currentArm.moveToGoal(p);
 
     if (success) {
       if (vinMoovApp != null) {
-        vinMoovApp.addPoint(p);
+        vinMoovApp.addPoint(pos.getPoint(CoordinateFrame.WORLD_VIRTUAL));
       }
       publishTelemetry();
     }
@@ -287,6 +370,15 @@ public class InverseKinematics3D extends Service implements IKJointAnglePublishe
     double[][] jointPositionMap = createJointPositionMap();
     // TODO: pass a better datastructure?
     invoke("publishJointPositions", (Object) jointPositionMap);
+
+    // Make an array with tcpPosition with index 0->BASE_ARM and 1->WORLD
+    // coordinates
+    double[][] tcp = new double[2][];
+    tcp[0] = jointPositionMap[jointPositionMap.length - 1];
+    Point wPos = new Position(tcp[0][0], tcp[0][1], tcp[0][2], CoordinateFrame.BASE_ARM)
+        .getPoint(CoordinateFrame.WORLD);
+    tcp[1] = new double[] { wPos.getX(), wPos.getY(), wPos.getZ() };
+    invoke("publishTcpPosition", (Object) tcp);
   }
 
   public double[][] createJointPositionMap() {
@@ -402,6 +494,10 @@ public class InverseKinematics3D extends Service implements IKJointAnglePublishe
 
   public double[][] publishJointPositions(double[][] jointPositionMap) {
     return jointPositionMap;
+  }
+
+  public double[][] publishTcpPosition(double[][] tcpPosition) {
+    return tcpPosition;
   }
 
   public Point publishTracking(Point tracking) {

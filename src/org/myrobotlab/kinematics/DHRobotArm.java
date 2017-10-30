@@ -4,7 +4,6 @@ import java.io.Serializable;
 import java.util.ArrayList;
 
 import org.myrobotlab.logging.LoggerFactory;
-import org.myrobotlab.service.InverseKinematics3D;
 import org.myrobotlab.service.Servo;
 import org.slf4j.Logger;
 
