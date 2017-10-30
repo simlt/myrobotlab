@@ -2,6 +2,7 @@ package org.myrobotlab.jme3;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -637,19 +638,36 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
       collisionItems.clear();
     }
 
-    while (eventQueue.size() > 0) {
-      IKData event = eventQueue.remove();
+    // Handle servo update (with speed)
+    Iterator<IKData> eventItr = eventQueue.iterator();
+    while (eventItr.hasNext()) {
+      IKData event = eventItr.next();
+      boolean endedMovement = false;
       if (servoToNode.containsKey(event.name)) {
         Node node = servoToNode.get(event.name);
         Vector3f rotMask = new Vector3f((float) node.getUserData("rotationMask_x"), (float) node.getUserData("rotationMask_y"), (float) node.getUserData("rotationMask_z"));
         float currentAngle = (float) node.getUserData("currentAngle");
         Mapper map = maps.get(node.getName());
-        float rotation = (float) ((map.calcOutput(event.pos)) * Math.PI / 180 - currentAngle * Math.PI / 180);
-        Vector3f angle = rotMask.mult((float) rotation);
+        float targetAngle = (float) map.calcOutput(event.pos);
+        float deltaAngle = targetAngle - currentAngle;
+        float rotationTick = (float) (tpf * event.velocity);
+        if (deltaAngle < 0) {
+          rotationTick *= -1.0f;
+        }
+        // Check if destination reached or if velocity is unlimited (-1) and if so update to final position
+        if ((event.velocity < 0) || (Math.abs(rotationTick) > Math.abs(deltaAngle))) {
+          rotationTick = deltaAngle;
+          endedMovement = true;
+        }
+        Vector3f angle = rotMask.mult((float) (rotationTick * Math.PI / 180));
         node.rotate(angle.x, angle.y, angle.z);
-        node.setUserData("currentAngle", (float) (map.calcOutput(event.pos)));
+        node.setUserData("currentAngle", currentAngle + rotationTick);
         servoToNode.put(event.name, node);
         nodes.put(node.getName(), node);
+
+        if (endedMovement) {
+          eventItr.remove();
+        }
       }
     }
     while (pointQueue.size() > 0) {

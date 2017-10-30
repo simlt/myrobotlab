@@ -54,9 +54,10 @@ public class InverseKinematics3D extends Service implements IKJointAnglePublishe
   transient InputTrackingThread trackingThread = null;
 
   enum CoordinateFrame {
-    WORLD, // World fixed
-    WORLD_VIRTUAL, BASE_ARM, // Arm base joint frame
-    // LOCAL // TCP mobile frame
+    WORLD, // World fixed frame
+    WORLD_VIRTUAL,  // Virtual Inmoov world frame
+    BASE_ARM, // Arm base joint frame
+    // LOCAL // TODO TCP mobile frame
   }
 
   /**
@@ -293,7 +294,7 @@ public class InverseKinematics3D extends Service implements IKJointAnglePublishe
     pitch = MathUtils.degToRad(pitch);
     yaw = MathUtils.degToRad(yaw);
     Matrix trMatrix = Matrix.translation(dx, dy, dz);
-    Matrix rotMatrix = Matrix.zRotation(yaw).multiply(Matrix.yRotation(pitch)).multiply(Matrix.xRotation(roll));
+    Matrix rotMatrix = Matrix.zRotation(roll).multiply(Matrix.yRotation(pitch)).multiply(Matrix.xRotation(yaw));
     baseToWorldTransform = trMatrix.multiply(rotMatrix);
     Point armOrigin = new Point(dx, dy, dz, 0, 0, 0);
     worldToVirtualTranslation = armOrigin.subtract(virtualArmOrigin);
