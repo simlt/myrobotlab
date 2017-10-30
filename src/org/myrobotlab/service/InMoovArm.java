@@ -355,29 +355,6 @@ public class InMoovArm extends Service implements IKJointAngleListener {
 
   @Override
   public void onJointAngles(Map<String, Double> angleMap) {
-    // We should walk though our list of servos and see if
-    // the map has it.. if so .. move to it!
-    // Peers p = InMoovArm.getPeers(getName()).getPeers("Servo");
-    // TODO: look up the mapping for all the servos in the arm.
-
-    // we map the servo 90 degrees to be 0 degrees.
-    HashMap<String, Double> phaseShiftMap = new HashMap<String, Double>();
-    // phaseShiftMap.put("omoplate", 90);
-    // Harry's omoplate is +90 degrees from Gaels InMoov..
-    // These are for the encoder offsets.
-    // these map between the reference frames of the dh model & the actual arm.
-    // (calibration)
-    phaseShiftMap.put("omoplate", 90.0);
-    phaseShiftMap.put("shoulder", 90.0);
-    phaseShiftMap.put("rotate", -450.0);
-    phaseShiftMap.put("bicep", 90.0);
-
-    HashMap<String, Double> gainMap = new HashMap<String, Double>();
-    gainMap.put("omoplate", 1.0);
-    gainMap.put("shoulder", -1.0);
-    gainMap.put("rotate", -1.0);
-    gainMap.put("bicep", -1.0);
-
     ArrayList<String> servos = new ArrayList<String>();
     servos.add("omoplate");
     servos.add("shoulder");
@@ -385,60 +362,50 @@ public class InMoovArm extends Service implements IKJointAngleListener {
     servos.add("bicep");
     for (String s : servos) {
       if (angleMap.containsKey(s)) {
+        // NOTE: Also negative angles are acceptable
+        Double angle = angleMap.get(s) % 360.0;
         if ("omoplate".equals(s)) {
-          Double angle = (gainMap.get(s) * angleMap.get(s) + phaseShiftMap.get(s)) % 360.0;
-          if (angle < 0) {
-            angle += 360;
-          }
           omoplate.moveTo(angle.intValue());
         }
         if ("shoulder".equals(s)) {
-          Double angle = (gainMap.get(s) * angleMap.get(s) + phaseShiftMap.get(s)) % 360.0;
-          if (angle < 0) {
-            angle += 360;
-          }
           shoulder.moveTo(angle.intValue());
         }
         if ("rotate".equals(s)) {
-          Double angle = (gainMap.get(s) * angleMap.get(s) + phaseShiftMap.get(s)) % 360.0;
-          if (angle < 0) {
-            angle += 360;
-          }
           rotate.moveTo(angle.intValue());
         }
         if ("bicep".equals(s)) {
-          Double angle = (gainMap.get(s) * angleMap.get(s) + phaseShiftMap.get(s)) % 360.0;
           bicep.moveTo(angle.intValue());
-          if (angle < 0) {
-            angle += 360;
-          }
         }
       }
     }
   }
 
   public static DHRobotArm getDHRobotArm() {
-
     // TODO: specify this correctly and document the reference frames!
     DHRobotArm arm = new DHRobotArm();
-    // d , r, theta , alpha
-
+    double dhParams[][] = {
+        // d, r, theta, alpha
+        { 0, 40, 0, MathUtils.degToRad(-90) }, // omoplate
+        { 80, 0, 0, MathUtils.degToRad(90) }, // shoulder
+        { 280, 0, 0, MathUtils.degToRad(90) }, // rotate
+        { 0, 280, 0, MathUtils.degToRad(0) } // bicep
+    };
     // TODO: the DH links should take into account the encoder offsets and
     // calibration maps
-    DHLink link1 = new DHLink("omoplate", 0, 40, 0, MathUtils.degToRad(-90));
+    DHLink link1 = new DHLink("omoplate", dhParams[0][0], dhParams[0][1], dhParams[0][2], dhParams[0][3]);
     link1.setMin(MathUtils.degToRad(-80));
     link1.setMax(MathUtils.degToRad(0));
 
-    DHLink link2 = new DHLink("shoulder", 80, 0, 0, MathUtils.degToRad(90));
+    DHLink link2 = new DHLink("shoulder", dhParams[1][0], dhParams[1][1], dhParams[1][2], dhParams[1][3]);
     // TODO: this is actually 90 to -90 ? validate if inverted.
     link2.setMin(MathUtils.degToRad(-90));
     link2.setMax(MathUtils.degToRad(90));
 
-    DHLink link3 = new DHLink("rotate", 280, 0, 0, MathUtils.degToRad(90));
+    DHLink link3 = new DHLink("rotate", dhParams[2][0], dhParams[2][1], dhParams[2][2], dhParams[2][3]);
     link3.setMin(MathUtils.degToRad(90));
     link3.setMax(MathUtils.degToRad(270));
 
-    DHLink link4 = new DHLink("bicep", 0, 280, 0, MathUtils.degToRad(0));
+    DHLink link4 = new DHLink("bicep", dhParams[3][0], dhParams[3][1], dhParams[3][2], dhParams[3][3]);
     // TODO: this is probably inverted? should be 90 to 0...
     link4.setMin(MathUtils.degToRad(0));
     link4.setMax(MathUtils.degToRad(90));
@@ -448,6 +415,42 @@ public class InMoovArm extends Service implements IKJointAngleListener {
     arm.addLink(link3);
     arm.addLink(link4);
 
+    return arm;
+  }
+
+  // DHparams d, theta, r, alpha (units are in mm and deg)
+  public DHRobotArm getDHRobotArm(double[][] dhParams) {
+    DHRobotArm arm = new DHRobotArm();
+    for (int joint = 0; joint < dhParams.length; ++joint) {
+      String name;
+      Servo servo;
+      switch (joint) {
+      default:
+      case 0:
+        name = "omoplate";
+        servo = omoplate;
+        break;
+      case 1:
+        name = "shoulder";
+        servo = shoulder;
+        break;
+      case 2:
+        name = "rotate";
+        servo = rotate;
+        break;
+      case 3:
+        name = "bicep";
+        servo = bicep;
+        break;
+      }
+      // Convert theta and alpha from degrees to radians
+      double theta = MathUtils.degToRad(dhParams[joint][1]);
+      DHLink link = new DHLink(name, dhParams[joint][0], dhParams[joint][2], theta,
+          MathUtils.degToRad(dhParams[joint][3]));
+      link.setMin(theta + MathUtils.degToRad(servo.getMinInput()));
+      link.setMax(theta + MathUtils.degToRad(servo.getMaxInput()));
+      arm.addLink(link);
+    }
     return arm;
   }
 

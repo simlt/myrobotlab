@@ -17,11 +17,8 @@ public class DHRobotArm implements Serializable {
   private int maxIterations = 1000;
 
   private ArrayList<DHLink> links;
-  
-  public String name;
 
-  // for debugging ..
-  public transient InverseKinematics3D ik3D = null;
+  public String name;
 
   public DHRobotArm() {
     super();
@@ -32,10 +29,11 @@ public class DHRobotArm implements Serializable {
     super();
     name = copy.name;
     links = new ArrayList<DHLink>();
-    for (DHLink link:copy.links) {
+    for (DHLink link : copy.links) {
       links.add(new DHLink(link));
     }
   }
+
   public ArrayList<DHLink> addLink(DHLink link) {
     links.add(link);
     return links;
@@ -80,7 +78,7 @@ public class DHRobotArm implements Serializable {
     // deltaTheta[i] to delta[x,y,z]
     Matrix jInverse = jacobian.pseudoInverse();
     // log.debug("Pseudo inverse Jacobian(p)approx\n" + jInverse);
-    if (jInverse == null){
+    if (jInverse == null) {
       jInverse = new Matrix(3, numLinks);
     }
     return jInverse;
@@ -110,80 +108,58 @@ public class DHRobotArm implements Serializable {
     }
 
     Matrix m = new Matrix(4, 4);
-    // TODO: init to the ident?
-
-    // initial frame orientated around x
+    // Identity matrix
     m.elements[0][0] = 1;
     m.elements[1][1] = 1;
     m.elements[2][2] = 1;
     m.elements[3][3] = 1;
 
-    // initial frame orientated around z
-    // m.elements[0][2] = 1;
-    // m.elements[1][1] = 1;
-    // m.elements[2][0] = 1;
-    // m.elements[3][3] = 1;
-
-    // log.debug("-------------------------");
-    // log.debug(m);
-    // TODO: validate this approach..
+    // Get transformation matrix from initial frame to desired frame iterating
+    // through each link
     for (int i = 0; i <= index; i++) {
       DHLink link = links.get(i);
       Matrix s = link.resolveMatrix();
-      // log.debug(s);
       m = m.multiply(s);
-      // log.debug("-------------------------");
-      // log.debug(m);
     }
-    // now m should be the total translation for the arm
-    // given the arms current position
+    // m contains the transform from initial frame to the desired link, given
+    // the arm current position
     double x = m.elements[0][3];
     double y = m.elements[1][3];
     double z = m.elements[2][3];
-    // double ws = m.elements[3][3];
-    // log.debug("World Scale : " + ws);
     Point jointPosition = new Point(x, y, z, 0, 0, 0);
     return jointPosition;
-
   }
 
   /**
-   * @param lastDHLink the index of the link that you want the global position at.
+   * @param lastDHLink
+   *          the index of the link that you want the global position at.
    * @return the x,y,z of the palm. roll,pitc, and yaw are not returned/computed
-   * with this function
+   *         with this function
    */
   public Point getPalmPosition(String lastDHLink) {
-    // TODO Auto-generated method stub
+
+    // return getJointPosition(links.size()-1);
     // return the position of the end effector wrt the base frame
     Matrix m = new Matrix(4, 4);
-    // TODO: init to the ident?
-
-    // initial frame orientated around x
+    // Identity matrix
     m.elements[0][0] = 1;
     m.elements[1][1] = 1;
     m.elements[2][2] = 1;
     m.elements[3][3] = 1;
 
-    // initial frame orientated around z
-    // m.elements[0][2] = 1;
-    // m.elements[1][1] = 1;
-    // m.elements[2][0] = 1;
-    // m.elements[3][3] = 1;
-
-    // log.debug("-------------------------");
-    // log.debug(m);
-    // TODO: validate this approach..
-    for (int i = 0; i < links.size(); i++){
+    // Post multiply each transformation matrix climbing frames from base to
+    // end.
+    // m will hold the transformation matrix from base to end
+    for (int i = 0; i < links.size(); i++) {
       Matrix s = links.get(i).resolveMatrix();
-      // log.debug(s);
       m = m.multiply(s);
       // log.debug("-------------------------");
       // log.debug(m);
-      if (links.get(i).getName()!= null && links.get(i).getName().equals(lastDHLink)) {
+      if (links.get(i).getName() != null && links.get(i).getName().equals(lastDHLink)) {
         break;
       }
     }
-    // now m should be the total translation for the arm
+    // now m holds the total transformation matrix for the arm
     // given the arms current position
     double x = m.elements[0][3];
     double y = m.elements[1][3];
@@ -191,43 +167,52 @@ public class DHRobotArm implements Serializable {
     // double ws = m.elements[3][3];
     // log.debug("World Scale : " + ws);
     // TODO: pass /compute the roll pitch and yaw ..
-    double pitch = Math.atan2(-1.0*(m.elements[2][0]), Math.sqrt(m.elements[0][0]*m.elements[0][0] + m.elements[1][0]*m.elements[1][0]));
+    // TODO: This doesn't seem right
+    double pitch = Math.atan2(-1.0 * (m.elements[2][0]),
+        Math.sqrt(m.elements[0][0] * m.elements[0][0] + m.elements[1][0] * m.elements[1][0]));
     double roll = 0;
     double yaw = 0;
-    if (pitch == Math.PI/2) {
-      roll =  Math.atan2(m.elements[0][1], m.elements[1][1]);
+    if (pitch == Math.PI / 2) {
+      roll = Math.atan2(m.elements[0][1], m.elements[1][1]);
+    } else if (pitch == -1 * Math.PI / 2) {
+      roll = Math.atan2(m.elements[0][1], m.elements[1][1]) * -1;
+    } else {
+      roll = Math.atan2(m.elements[2][1] / Math.cos(pitch), m.elements[2][2]) / Math.cos(pitch);
+      yaw = Math.atan2(m.elements[1][0] / Math.cos(pitch), m.elements[0][0] / Math.cos(pitch)) - Math.PI / 2;
     }
-    else if (pitch == -1 * Math.PI/2) {
-      roll = Math.atan2(m.elements[0][1], m.elements[1][1]) *-1;
-    }
-    else {
-      roll = Math.atan2(m.elements[2][1]/Math.cos(pitch), m.elements[2][2])/Math.cos(pitch);
-      yaw = Math.atan2(m.elements[1][0]/Math.cos(pitch), m.elements[0][0]/Math.cos(pitch)) - Math.PI/2;
-    }
-//    double pitch=0, roll=0, yaw=0; //attitude, bank, heading
-//    if (m.elements[1][0] > 0.998) {
-//      yaw = Math.atan2(m.elements[0][2], m.elements[2][2]);
-//      pitch = Math.PI/2;
-//    }
-//    else if (m.elements[1][0] < -0.998) {
-//      yaw = Math.atan2(m.elements[0][2], m.elements[2][2]);
-//      pitch = -Math.PI/2;
-//    }
-//    else {
-//      yaw = Math.atan2(-m.elements[2][0], m.elements[0][0]);
-//      roll = Math.atan2(-m.elements[1][2], m.elements[1][1]);
-//      pitch = Math.asin(m.elements[1][0]);
-//    }
-    Point palm = new Point(x, y, z, pitch * 180 / Math.PI, roll * 180 / Math.PI, yaw * 180 / Math.PI);
-    
+    // double pitch=0, roll=0, yaw=0; //attitude, bank, heading
+    // if (m.elements[1][0] > 0.998) {
+    // yaw = Math.atan2(m.elements[0][2], m.elements[2][2]);
+    // pitch = Math.PI/2;
+    // }
+    // else if (m.elements[1][0] < -0.998) {
+    // yaw = Math.atan2(m.elements[0][2], m.elements[2][2]);
+    // pitch = -Math.PI/2;
+    // }
+    // else {
+    // yaw = Math.atan2(-m.elements[2][0], m.elements[0][0]);
+    // roll = Math.atan2(-m.elements[1][2], m.elements[1][1]);
+    // pitch = Math.asin(m.elements[1][0]);
+    // }
+    // Point palm = new Point(x, y, z, pitch * 180 / Math.PI, roll * 180 /
+    // Math.PI, yaw * 180 / Math.PI);
+    Point palm = new Point(x, y, z, 0, 0, 0);
 
     return palm;
+  }
+
+  public void zeroAllJoints() {
+    for (DHLink link : links) {
+      double zero = link.getMin();
+      log.info("Zeroing Servo {} to {} degrees", link.getName(), zero * 180.0 / Math.PI);
+      link.setTheta(zero);
+    }
   }
 
   public void centerAllJoints() {
     for (DHLink link : links) {
       double center = (link.getMax() + link.getMin()) / 2.0;
-      log.info("Centering Servo {} to {} degrees", link.getName(), center);
+      log.info("Centering Servo {} to {} degrees", link.getName(), center * 180.0 / Math.PI);
       link.setTheta(center);
     }
   }
@@ -265,7 +250,8 @@ public class DHRobotArm implements Serializable {
         // update joint positions! move towards the goal!
         double d = dTheta.elements[i][0];
         // incr rotate needs to be min/max aware here!
-        this.getLink(i).incrRotate(d);
+        // TODO Shouldn't this be not clamped, but only clamp the real movement?
+        this.getLink(i).incrRotateClamped(d);
       }
       // delta point represents the direction we need to move in order to
       // get there.
@@ -293,19 +279,15 @@ public class DHRobotArm implements Serializable {
     this.links = links;
   }
 
-  public void setIk3D(InverseKinematics3D ik3d) {
-    ik3D = ik3d;
+  public boolean armMovementEnds() {
+    for (DHLink link : links) {
+      if (link.getState() != Servo.SERVO_EVENT_STOPPED) {
+        return false;
+      }
+    }
+    return true;
   }
 
-  public boolean armMovementEnds() {
-  	for (DHLink link: links) {
-  		if (link.getState() != Servo.SERVO_EVENT_STOPPED) {
-  			return false;
-  		}
-  	}
-  	return true;
-  }
-  
   public double[][] createJointPositionMap() {
 
     double[][] jointPositionMap = new double[getNumLinks() + 1][3];
@@ -325,10 +307,10 @@ public class DHRobotArm implements Serializable {
   }
 
   public Point getVector() {
-    Point lastJoint = getJointPosition(links.size()-1);
-    Point previousJoint = getJointPosition(links.size()-2);
+    Point lastJoint = getJointPosition(links.size() - 1);
+    Point previousJoint = getJointPosition(links.size() - 2);
     Point retval = lastJoint.subtract(previousJoint);
-    
+
     return retval;
   }
 

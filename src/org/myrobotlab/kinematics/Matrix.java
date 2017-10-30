@@ -65,8 +65,8 @@ public class Matrix implements Serializable {
     R.elements[1][1] = c;
     R.elements[2][2] = c;
     R.elements[3][3] = 1;
-    R.elements[1][2] = s;
-    R.elements[2][1] = -s;
+    R.elements[1][2] = -s;
+    R.elements[2][1] = s;
     return R;
   }
 
@@ -83,8 +83,8 @@ public class Matrix implements Serializable {
     R.elements[1][1] = 1;
     R.elements[2][2] = c;
     R.elements[3][3] = 1;
-    R.elements[2][0] = s;
-    R.elements[0][2] = -s;
+    R.elements[2][0] = -s;
+    R.elements[0][2] = s;
     return R;
   }
 
@@ -101,8 +101,8 @@ public class Matrix implements Serializable {
     R.elements[1][1] = c;
     R.elements[2][2] = 1;
     R.elements[3][3] = 1;
-    R.elements[0][1] = s;
-    R.elements[1][0] = -s;
+    R.elements[0][1] = -s;
+    R.elements[1][0] = s;
     return R;
   }
 
@@ -356,6 +356,47 @@ public class Matrix implements Serializable {
     for (int r = 0; r < numRows; r++)
       for (int c = 0; c < numCols; c++)
         ret.elements[c][r] = elements[r][c];
+    return ret;
+  }
+
+  /**
+   * @return the 3x3 rotation matrix associated to the homogeneous transform
+   *         matrix. Must be called on a homogeneous transform matrix
+   */
+  private Matrix getR() {
+    Matrix ret = new Matrix(3, 3);
+    for (int r = 0; r < ret.numRows; r++)
+      for (int c = 0; c < ret.numCols; c++)
+        ret.elements[r][c] = elements[r][c];
+    return ret;
+  }
+
+  /**
+   * @return the 3x1 translation vector associated to the homogeneous transform
+   *         matrix. Must be called on a homogeneous transform matrix
+   */
+  private Matrix getTr() {
+    Matrix ret = new Matrix(3, 1);
+    for (int r = 0; r < ret.numRows; r++)
+      ret.elements[r][0] = elements[r][3];
+    return ret;
+  }
+
+  /**
+   * @return the inverse homogeneous transform matrix
+   */
+  public Matrix homogeneousTransformInverse() {
+    Matrix ret = new Matrix();
+    Matrix invR = getR().transpose();
+    Matrix invTr = invR.multiply(getTr()).multiply(-1);
+    for (int r = 0; r < invR.numRows; r++)
+      for (int c = 0; c < invR.numCols; c++)
+        ret.elements[r][c] = invR.elements[r][c];
+    for (int r = 0; r < invTr.numRows; r++)
+      ret.elements[r][3] = invTr.elements[r][0];
+    ret.elements[3][3] = 1;
+    
+    Matrix testId = this.multiply(ret); // this should be a 4x4 identity matrix
     return ret;
   }
 }

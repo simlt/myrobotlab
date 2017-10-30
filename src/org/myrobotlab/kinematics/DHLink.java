@@ -63,7 +63,7 @@ public class DHLink implements Serializable {
     this.type = DHLinkType.REVOLUTE;
     // m = resolveMatrix();
   }
-  
+
   public DHLink(DHLink copy){
     super();
     this.d = copy.d;
@@ -235,30 +235,23 @@ public class DHLink implements Serializable {
   }
 
   public void incrRotate(double delta) {
+    double destAngle = this.theta + delta;
     if (DHLinkType.REVOLUTE.equals(type)){
-      // we shouldn't go beyond the max
-      double destAngle = this.theta + delta;
-      // I suppose this means min/max are in radians..
-      if (destAngle > max || destAngle < min) {
-        // we're out of range
-        // log.info("Link {} angle out of range {} ", name, destAngle);
-      }
-      else {
-        this.theta = destAngle;
-      }
+      this.theta = destAngle;
     }
     else if (DHLinkType.REVOLUTE_ALPHA.equals(type)) {
-      // we shouldn't go beyond the max
-      double destAngle = alpha + delta;
-      // I suppose this means min/max are in radians..
-      if (destAngle > max || destAngle < min) {
-        // we're out of range
-        // log.info("Link {} angle out of range {} ", name, destAngle);
-      }
-      else {
-        alpha = destAngle;
-      }
+      this.alpha = destAngle;
     }
+  }
+  
+  public void incrRotateClamped(double delta) {
+	// min/max are in radians..
+	// we shouldn't go beyond the limits
+    delta = Math.min(delta, max - this.theta);
+    delta = Math.max(delta, min - this.theta);
+    // we're out of range
+    // log.info("Link {} angle out of range {} ", name, destAngle);
+    incrRotate(delta);
   }
 
   public double getThetaDegrees() {

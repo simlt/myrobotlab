@@ -1964,6 +1964,7 @@ public class InMoov extends Service {
       settings.setFullscreen(VinmoovFullScreen);
       // settings.setEmulateMouse(false);
       // settings.setUseJoysticks(false);
+      settings.setFrameRate(30);
       settings.setUseInput(true);
       vinMoovApp.setSettings(settings);
       vinMoovApp.setShowSettings(false);

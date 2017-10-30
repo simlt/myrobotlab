@@ -6,6 +6,7 @@ import java.util.Map;
 
 import org.myrobotlab.framework.Service;
 import org.myrobotlab.framework.ServiceType;
+import org.myrobotlab.jme3.InMoov3DApp;
 import org.myrobotlab.kinematics.DHLink;
 import org.myrobotlab.kinematics.DHRobotArm;
 import org.myrobotlab.kinematics.Matrix;
@@ -24,7 +25,7 @@ import org.slf4j.Logger;
  * InverseKinematics3D - This class provides a 3D based inverse kinematics
  * implementation that allows you to specify the robot arm geometry based on DH
  * Parameters. This will use a pseudo-inverse jacobian gradient descent approach
- * to move the end affector to the desired x,y,z postions in space with respect
+ * to move the end effector to the desired x,y,z positions in space with respect
  * to the base frame.
  * 
  * Rotation and Orientation information is not currently supported. (but should
@@ -44,12 +45,47 @@ public class InverseKinematics3D extends Service implements IKJointAnglePublishe
   private Point joystickLinearVelocity = new Point(0, 0, 0, 0, 0, 0);
 
   private Matrix inputMatrix = null;
+  private Matrix invBaseMatrix = null;
+
+  transient private InMoov3DApp vinMoovApp = null;
 
   transient InputTrackingThread trackingThread = null;
+
+  enum CoordinateFrame {
+	  WORLD,       // World fixed
+	  BASE_ARM,    // Arm base joint frame
+	  // LOCAL     // TCP mobile frame
+  }
 
   public InverseKinematics3D(String n) {
     super(n);
     // TODO: init
+  }
+
+  public void initArm(String side, double[][] dhParams) {
+    if ("RIGHT".equals(side)) {
+      InMoovArm arm = (InMoovArm) Runtime.getService("i01.rightArm");
+      if (arm != null) {
+        DHRobotArm dhRobotArm = arm.getDHRobotArm(dhParams);
+        setCurrentArm(dhRobotArm);
+        // dhRobotArm.setIk3D(this);
+        addListener("publishJointAngles", "i01.rightArm", "onJointAngles");
+
+        // Update virtualInmoov parameters
+        if (vinMoovApp == null) {
+          InMoov inMoov = (InMoov) Runtime.getService("i01");
+          try {
+            vinMoovApp = inMoov.startVinMoov();
+            vinMoovApp.setArmGeometry(side, dhParams);
+          } catch (InterruptedException e) {
+          }
+        }
+      } else {
+        log.error("Cannot start InverseKinematics3D service for RightArm");
+      }
+    } else {
+      log.error("Unsupported arm \"%s\" for InverseKinematics3D", side);
+    }
   }
 
   public void startTracking() {
@@ -144,31 +180,62 @@ public class InverseKinematics3D extends Service implements IKJointAnglePublishe
    * @param dz
    *          - z axis translation
    * @param roll
-   *          - rotation about z (in degrees)
-   * @param pitch
    *          - rotation about x (in degrees)
-   * @param yaw
+   * @param pitch
    *          - rotation about y (in degrees)
-   * @return a matric that represents the rotation/translation matrix
+   * @param yaw
+   *          - rotation about z (in degrees)
+   * @return a matrix that represents the rotation/translation matrix
    */
   public Matrix createInputMatrix(double dx, double dy, double dz, double roll, double pitch, double yaw) {
     roll = MathUtils.degToRad(roll);
     pitch = MathUtils.degToRad(pitch);
     yaw = MathUtils.degToRad(yaw);
     Matrix trMatrix = Matrix.translation(dx, dy, dz);
-    Matrix rotMatrix = Matrix.zRotation(roll).multiply(Matrix.yRotation(yaw).multiply(Matrix.xRotation(pitch)));
+    Matrix rotMatrix = Matrix.zRotation(yaw).multiply(Matrix.yRotation(pitch)).multiply(Matrix.xRotation(roll));
     inputMatrix = trMatrix.multiply(rotMatrix);
     return inputMatrix;
   }
+  
+  /**
+   * Sets the fixed position of the arm base joint in world frame
+   */
+  public void setArmBaseFrame(double dx, double dy, double dz, double roll, double pitch, double yaw) {
+    roll = MathUtils.degToRad(roll);
+    pitch = MathUtils.degToRad(pitch);
+    yaw = MathUtils.degToRad(yaw);
+    Matrix trMatrix = Matrix.translation(dx, dy, dz);
+    Matrix rotMatrix = Matrix.zRotation(yaw).multiply(Matrix.yRotation(pitch)).multiply(Matrix.xRotation(roll));
+    invBaseMatrix = trMatrix.multiply(rotMatrix).homogeneousTransformInverse();
+  }
 
-  public Point rotateAndTranslate(Point pIn) {
+  /**
+   * @param pIn point to be transformed
+   * @param inFrame Input coordinate frame
+   * @return point in the BASE_ARM frame, which is used by the inverse kinematics solver
+   */
+  // TODO Maybe move this and make it support any output frame
+  public Point rotateAndTranslate(Point pIn, CoordinateFrame inFrame) {
+    Matrix pOM = new Matrix(4, 1);
+    pOM.elements[0][0] = pIn.getX();
+    pOM.elements[1][0] = pIn.getY();
+    pOM.elements[2][0] = pIn.getZ();
+    pOM.elements[3][0] = 1;
+    switch (inFrame) {
+    case WORLD:
+      if (invBaseMatrix != null) {
+        pOM = invBaseMatrix.multiply(pOM);
+      }
+      break;
+    case BASE_ARM:
+      // DO nothing
+      break;
+    }
 
-    Matrix m = new Matrix(4, 1);
-    m.elements[0][0] = pIn.getX();
-    m.elements[1][0] = pIn.getY();
-    m.elements[2][0] = pIn.getZ();
-    m.elements[3][0] = 1;
-    Matrix pOM = inputMatrix.multiply(m);
+    // apply final transform
+    if (inputMatrix != null) {
+      pOM = inputMatrix.multiply(pOM);
+    }
 
     // TODO: compute the roll pitch yaw
     double roll = 0;
@@ -179,20 +246,28 @@ public class InverseKinematics3D extends Service implements IKJointAnglePublishe
     return pOut;
   }
 
+  public void zeroAllJoints() {
+    currentArm.zeroAllJoints();
+    publishTelemetry();
+  }
+
   public void centerAllJoints() {
     currentArm.centerAllJoints();
     publishTelemetry();
   }
 
   public void moveTo(Point p) {
+    moveTo(p, CoordinateFrame.BASE_ARM);
+  }
 
-    // log.info("Move TO {}", p );
-    if (inputMatrix != null) {
-      p = rotateAndTranslate(p);
-    }
+  public void moveTo(Point p, CoordinateFrame f) {
+    p = rotateAndTranslate(p, f);
     boolean success = currentArm.moveToGoal(p);
 
     if (success) {
+      if (vinMoovApp != null) {
+        vinMoovApp.addPoint(p);
+      }
       publishTelemetry();
     }
   }
@@ -201,10 +276,10 @@ public class InverseKinematics3D extends Service implements IKJointAnglePublishe
     Map<String, Double> angleMap = new HashMap<String, Double>();
     for (DHLink l : currentArm.getLinks()) {
       String jointName = l.getName();
-      double theta = l.getTheta();
+      double theta = l.getPositionValueDeg();
       // angles between 0 - 360 degrees.. not sure what people will really want?
       // - 180 to + 180 ?
-      angleMap.put(jointName, (double) MathUtils.radToDeg(theta) % 360.0F);
+      angleMap.put(jointName, theta);
     }
     invoke("publishJointAngles", angleMap);
     // we want to publish the joint positions
@@ -251,7 +326,7 @@ public class InverseKinematics3D extends Service implements IKJointAnglePublishe
     // InverseKinematics3D inversekinematics = new InverseKinematics3D("iksvc");
     inversekinematics.setCurrentArm(InMoovArm.getDHRobotArm());
     //
-    inversekinematics.getCurrentArm().setIk3D(inversekinematics);
+    // inversekinematics.getCurrentArm().setIk3D(inversekinematics);
     // Create a new DH Arm.. simpler for initial testing.
     // d , r, theta , alpha
     // DHRobotArm testArm = new DHRobotArm();
