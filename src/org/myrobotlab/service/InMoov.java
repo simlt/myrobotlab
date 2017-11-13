@@ -99,6 +99,7 @@ public class InMoov extends Service {
   transient public static OpenNi openni;
   transient public MouthControl mouthControl;
   transient public Python python;
+  transient public MapService map;
 
   transient public final static String LEFT = "left";
   transient public final static String RIGHT = "right";
@@ -1891,6 +1892,9 @@ public class InMoov extends Service {
 
     // For IntegratedMovement
     meta.addPeer("integratedMovement", "IntegratedMovement", "Inverse kinematic type movement");
+    
+    meta.addPeer("map", "MapService", "Map service for InMoov.");
+    meta.sharePeer("map.ik3D", "ik3D", "InverseKinematics3D", "shared Inverse kinematics service");
 
     return meta;
   }
@@ -2225,7 +2229,16 @@ public class InMoov extends Service {
     {
       warn("No Neopixel attached");
     }
-  }  
+  }
+  
+  public void startMapService() {
+    map = (MapService) startPeer("map");
+    map.addMapCalibrationHandler(this);
+  }
+  
+  public void onMapCalibration(double[][] mapCalibrationPoints) {
+    vinMoovApp.setMapCalibration(mapCalibrationPoints);
+  }
 
   @Override
   public void stopService() {

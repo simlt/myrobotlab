@@ -1,5 +1,6 @@
 package org.myrobotlab.jme3;
 
+import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -31,15 +32,20 @@ import com.jme3.light.DirectionalLight;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
+import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
+import com.jme3.scene.Mesh;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
+import com.jme3.scene.VertexBuffer;
+import com.jme3.scene.VertexBuffer.Type;
 import com.jme3.scene.shape.Box;
 import com.jme3.scene.shape.Cylinder;
 import com.jme3.system.AppSettings;
 import com.jme3.texture.Texture2D;
 import com.jme3.ui.Picture;
+import com.jme3.util.BufferUtils;
 
 /**
  * @author Christian version 1.0.3
@@ -75,6 +81,8 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
   protected Picture microOff;
   protected Picture battery[] = new Picture[101];
   protected Texture2D textureBat[] = new Texture2D[101];
+  protected VertexBuffer vertexBuffer;
+  protected Mesh mapMesh;
 
   public void setLeftArduinoConnected(boolean param) {
     leftArduinoConnected = param;
@@ -149,6 +157,7 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
     inputManager.setCursorVisible(true);
     flyCam.setEnabled(false);
     cam.setLocation(new Vector3f(0f, 0f, 900f));
+    // TODO set camera orientation
 
     inputManager.addMapping("MouseClickL", new MouseButtonTrigger(MouseInput.BUTTON_LEFT));
     inputManager.addListener(analogListener, "MouseClickL");
@@ -234,7 +243,6 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
     sun.setDirection(new Vector3f(-0.1f, -0.7f, -1.0f));
     rootNode.addLight(sun);
     rootNode.scale(.5f);
-    rootNode.setLocalTranslation(0, -200, 0);
 
     Node node = new Node("ltorso");
     rootNode.attachChild(node);
@@ -360,7 +368,7 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
     nodes.put("Rbicep", node);
     maps.put("Rbicep", new Mapper(0, 180, 5, 60));
 
-    node = new Node("leftS");
+    /*node = new Node("leftS");
     parentNode = nodes.get("ttorso");
     parentNode.attachChild(node);
     node.setLocalTranslation(new Vector3f(0, 300, 0));
@@ -434,11 +442,13 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
     node.rotate(angle.x, angle.y, angle.z);
     nodes.put("bicep", node);
     maps.put("bicep", new Mapper(0, 180, 5, 60));
+    */
 
     node = new Node("RWrist");
     parentNode = nodes.get("Rbicep");
     parentNode.attachChild(node);
-    spatial = assetManager.loadModel("Models/RWristFinger.j3o");
+    //spatial = assetManager.loadModel("Models/RWristFinger.j3o");
+    spatial = assetManager.loadModel("Models/RhandPointing.j3o");
     spatial.setName("RWrist");
     node.attachChild(spatial);
     node.setLocalTranslation(new Vector3f(15, -290, -10));
@@ -452,7 +462,7 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
     nodes.put("RWrist", node);
     maps.put("RWrist", new Mapper(0, 180, 180, 0));
 
-    node = new Node("LWrist");
+    /*node = new Node("LWrist");
     parentNode = nodes.get("bicep");
     parentNode.attachChild(node);
     spatial = assetManager.loadModel("Models/LWristFinger.j3o");
@@ -468,6 +478,7 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
     node.rotate(angle.x, angle.y, angle.z);
     nodes.put("LWrist", node);
     maps.put("LWrist", new Mapper(0, 180, 0, 180));
+    fff*/
 
     node = new Node("neck");
     parentNode = nodes.get("ttorso");
@@ -588,11 +599,12 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
 
     Material mat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
     mat.setColor("Color", ColorRGBA.Green);
-    Cylinder c = new Cylinder(4, 10, 5, 10, true, false);
+    Cylinder c = new Cylinder(4, 10, 20, 50, true, false);
     Geometry geom = new Geometry("Cylinder", c);
     geom.setMaterial(mat);
     point = new Node("point");
     point.attachChild(geom);
+    point.rotate(-FastMath.PI / 2, FastMath.PI, 0f);
     rootNode.attachChild(point);
 
     if (service != null) {
@@ -600,7 +612,42 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
         service.notifyAll();
       }
     }
-    ;
+    
+    // Map object
+    Vector3f[] mapVertices = new Vector3f[4];
+    //double[][] points = { { -100, 200, 200 }, { 100, 200, 200 }, { -100, 200, 300 }, { 100, 200, 300 } };
+    /* mapVertices[0] = new Vector3f((float)points[0][0], (float)points[0][1], (float)points[0][2]);
+    mapVertices[1] = new Vector3f((float)points[1][0], (float)points[1][1], (float)points[1][2]);
+    mapVertices[2] = new Vector3f((float)points[2][0], (float)points[2][1], (float)points[2][2]);
+    mapVertices[3] = new Vector3f((float)points[3][0], (float)points[3][1], (float)points[3][2]); */
+    mapVertices[0] = new Vector3f(0,0,0);
+    mapVertices[1] = new Vector3f(0,0,0);
+    mapVertices[2] = new Vector3f(0,0,0);
+    mapVertices[3] = new Vector3f(0,0,0);
+    Vector2f[] texCoord = new Vector2f[4];
+    texCoord[0] = new Vector2f(0,1);
+    texCoord[1] = new Vector2f(1,1);
+    texCoord[2] = new Vector2f(0,0);
+    texCoord[3] = new Vector2f(1,0);
+    int [] indexes = { 0,3,1, 0,2,3 };
+    mapMesh = new Mesh();
+    mapMesh.setBuffer(Type.Position, 3, BufferUtils.createFloatBuffer(mapVertices));
+    mapMesh.setBuffer(Type.TexCoord, 2, BufferUtils.createFloatBuffer(texCoord));
+    mapMesh.setBuffer(Type.Index,    3, BufferUtils.createIntBuffer(indexes));
+    mapMesh.updateBound();
+
+    //Box box = new Box(75f,50f,25f);
+    vertexBuffer = mapMesh.getBuffer(Type.Position);
+    geom = new Geometry("MapMesh", mapMesh);
+    mat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+    //map.setTexture("DiffuseMap", assetManager.loadTexture("Textures/map.JPG"));
+    mat.setTexture("ColorMap", assetManager.loadTexture("Textures/checker.jpg"));
+    //mat.getAdditionalRenderState().setBlendMode(BlendMode.Alpha);
+    geom.setMaterial(mat);
+    //geom.rotate(0f, 0f, 0f);
+    //geom.setLocalTranslation(0f, -200f, -200f);
+    geom.rotate(-FastMath.PI / 2, FastMath.PI, 0f);
+    rootNode.attachChild(geom);
 
   }
 
@@ -672,7 +719,7 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
     }
     while (pointQueue.size() > 0) {
       Point p = pointQueue.remove();
-      point.setLocalTranslation((float) p.getX(), (float) p.getZ(), (float) p.getY());
+      point.setLocalTranslation((float) -p.getX(), (float) p.getZ(), (float) p.getY());
     }
 
     if (VinmoovMonitorActivated) {
@@ -814,6 +861,7 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
         } else {
           settings.setFullscreen(true);
         }
+        restart();
       }
     }
   };
@@ -949,5 +997,14 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
       }
     }
     return origin;
+  }
+
+  public void setMapCalibration(double[][] mapCalibrationPoints) {
+    FloatBuffer data = (FloatBuffer)vertexBuffer.getData();
+    for (int i = 0; i < 4; ++i)
+      for (int j = 0; j < mapCalibrationPoints[i].length; ++j)
+        data.put(i * mapCalibrationPoints[i].length + j, (float)mapCalibrationPoints[i][j]);
+    vertexBuffer.setUpdateNeeded();
+    mapMesh.updateBound();
   }
 }

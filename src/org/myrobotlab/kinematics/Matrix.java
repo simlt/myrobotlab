@@ -395,8 +395,7 @@ public class Matrix implements Serializable {
     for (int r = 0; r < invTr.numRows; r++)
       ret.elements[r][3] = invTr.elements[r][0];
     ret.elements[3][3] = 1;
-    
-    Matrix testId = this.multiply(ret); // this should be a 4x4 identity matrix
+
     return ret;
   }
 }
