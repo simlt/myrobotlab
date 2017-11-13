@@ -43,11 +43,7 @@ public class DHRobotArm implements Serializable {
     // double delta = 0.000001;
     double delta = 0.0001;
     int numLinks = this.getNumLinks();
-    // we need a jacobian matrix that is 6 x numLinks
-    // for now we'll only deal with x,y,z we can add rotation later. so only 3
-    // We can add rotation information into slots 4,5,6 when we add it to the
-    // algorithm.
-    Matrix jacobian = new Matrix(3, numLinks);
+    Matrix jacobian = new Matrix(6, numLinks);
     // compute the gradient of x,y,z based on the joint movement.
     Point basePosition = this.getPalmPosition();
     // log.debug("Base Position : " + basePosition);
@@ -66,10 +62,16 @@ public class DHRobotArm implements Serializable {
       double dXdj = deltaPoint.getX() / delta;
       double dYdj = deltaPoint.getY() / delta;
       double dZdj = deltaPoint.getZ() / delta;
+      double dRXdj = deltaPoint.getYaw() / delta;
+      double dRYdj = deltaPoint.getPitch() / delta;
+      double dRZdj = deltaPoint.getRoll() / delta;
       jacobian.elements[0][j] = dXdj;
       jacobian.elements[1][j] = dYdj;
       jacobian.elements[2][j] = dZdj;
-      // TODO: get orientation roll/pitch/yaw
+      jacobian.elements[3][j] = dRXdj;
+      jacobian.elements[4][j] = dRYdj;
+      jacobian.elements[5][j] = dRZdj;
+      
     }
     // log.debug("Jacobian(p)approx");
     // log.info("JACOBIAN\n" +jacobian);
@@ -78,7 +80,7 @@ public class DHRobotArm implements Serializable {
     Matrix jInverse = jacobian.pseudoInverse();
     // log.debug("Pseudo inverse Jacobian(p)approx\n" + jInverse);
     if (jInverse == null) {
-      jInverse = new Matrix(3, numLinks);
+      jInverse = new Matrix(6, numLinks);
     }
     return jInverse;
   }
@@ -147,7 +149,7 @@ public class DHRobotArm implements Serializable {
     m.elements[3][3] = 1;
 
     // Post multiply each transformation matrix climbing frames from base to
-    // end.
+    // end effector
     // m will hold the transformation matrix from base to end
     for (int i = 0; i < links.size(); i++) {
       Matrix s = links.get(i).resolveMatrix();
@@ -163,39 +165,14 @@ public class DHRobotArm implements Serializable {
     double x = m.elements[0][3];
     double y = m.elements[1][3];
     double z = m.elements[2][3];
-    // double ws = m.elements[3][3];
-    // log.debug("World Scale : " + ws);
-    // TODO: pass /compute the roll pitch and yaw ..
-    // TODO: This doesn't seem right
-    double pitch = Math.atan2(-1.0 * (m.elements[2][0]),
-        Math.sqrt(m.elements[0][0] * m.elements[0][0] + m.elements[1][0] * m.elements[1][0]));
-    double roll = 0;
-    double yaw = 0;
-    if (pitch == Math.PI / 2) {
-      roll = Math.atan2(m.elements[0][1], m.elements[1][1]);
-    } else if (pitch == -1 * Math.PI / 2) {
-      roll = Math.atan2(m.elements[0][1], m.elements[1][1]) * -1;
-    } else {
-      roll = Math.atan2(m.elements[2][1] / Math.cos(pitch), m.elements[2][2]) / Math.cos(pitch);
-      yaw = Math.atan2(m.elements[1][0] / Math.cos(pitch), m.elements[0][0] / Math.cos(pitch)) - Math.PI / 2;
-    }
-    // double pitch=0, roll=0, yaw=0; //attitude, bank, heading
-    // if (m.elements[1][0] > 0.998) {
-    // yaw = Math.atan2(m.elements[0][2], m.elements[2][2]);
-    // pitch = Math.PI/2;
-    // }
-    // else if (m.elements[1][0] < -0.998) {
-    // yaw = Math.atan2(m.elements[0][2], m.elements[2][2]);
-    // pitch = -Math.PI/2;
-    // }
-    // else {
-    // yaw = Math.atan2(-m.elements[2][0], m.elements[0][0]);
-    // roll = Math.atan2(-m.elements[1][2], m.elements[1][1]);
-    // pitch = Math.asin(m.elements[1][0]);
-    // }
-    // Point palm = new Point(x, y, z, pitch * 180 / Math.PI, roll * 180 /
-    // Math.PI, yaw * 180 / Math.PI);
-    Point palm = new Point(x, y, z, 0, 0, 0);
+    // Compute RPY angles
+    double yaw = Math.atan2(m.elements[2][1], m.elements[2][2]);
+    double pitch = Math.atan2(-1 * m.elements[2][0],
+        Math.sin(yaw) * m.elements[2][1] + Math.cos(yaw) * m.elements[2][2]);
+    double roll = Math.atan2(-1 * Math.cos(yaw) * m.elements[0][1] + Math.sin(yaw) * m.elements[0][2],
+        Math.cos(yaw) * m.elements[1][1] - Math.sin(yaw) * m.elements[1][2]);
+
+    Point palm = new Point(x, y, z, pitch * 180 / Math.PI, roll * 180 / Math.PI, yaw * 180 / Math.PI);
 
     return palm;
   }
@@ -215,8 +192,12 @@ public class DHRobotArm implements Serializable {
       link.setTheta(center);
     }
   }
-
+  
   public boolean moveToGoal(Point goal) {
+    return moveToGoal(goal, false);
+  }
+
+  public boolean moveToGoal(Point goal, boolean useRPY) {
     // we know where we are.. we know where we want to go.
     int numSteps = 0;
     double iterStep = 0.25;
@@ -234,10 +215,13 @@ public class DHRobotArm implements Serializable {
       log.debug("Current Position " + currentPos);
       // vector to destination
       Point deltaPoint = goal.subtract(currentPos);
-      Matrix dP = new Matrix(3, 1);
+      Matrix dP = new Matrix(6, 1);
       dP.elements[0][0] = deltaPoint.getX();
       dP.elements[1][0] = deltaPoint.getY();
       dP.elements[2][0] = deltaPoint.getZ();
+      if (useRPY) {
+        dP.elements[4][0] = deltaPoint.getPitch();
+      }
       // scale a vector towards the goal by the increment step.
       dP = dP.multiply(iterStep);
 
@@ -255,19 +239,14 @@ public class DHRobotArm implements Serializable {
       // delta point represents the direction we need to move in order to
       // get there.
       // we should figure out how to scale the steps.
-      // For debugging of trajectories we should publish here?
 
-      // ik3D.publishTelemetry();
-      // try {
-      // Thread.sleep(2);
-      // } catch (InterruptedException e) {
-      // // TODO Auto-generated catch block
-      // e.printStackTrace();
-      // }
-
-      if (deltaPoint.magnitude() < errorThreshold) {
-        // log.debug("Final Position {} Number of Iterations {}" ,
-        // getPalmPosition() , numSteps);
+      double error;
+      if (useRPY) {
+        error = deltaPoint.normXYZP();
+      } else {
+        error = deltaPoint.magnitude();
+      }
+      if (error < errorThreshold) {
         break;
       }
     }

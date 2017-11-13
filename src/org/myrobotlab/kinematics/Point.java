@@ -132,6 +132,10 @@ public class Point implements Serializable {
     // TODO Auto-generated method stub
     return Math.sqrt(x * x + y * y + z * z);
   }
+  
+  public double normXYZP() {
+    return Math.sqrt(x * x + y * y + z * z + pitch * pitch);
+  }
 
   public Point subtract(Point p) {
     // TODO Auto-generated method stub

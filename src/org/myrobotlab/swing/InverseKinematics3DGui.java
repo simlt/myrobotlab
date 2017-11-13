@@ -41,8 +41,8 @@ public class InverseKinematics3DGui extends ServiceGui implements ActionListener
   private double[][] tcpPosList;
 
   enum FrameList {
-    ArmFrame,
     WorldFrame,
+    ArmFrame,
   }
 
   public InverseKinematics3DGui(final String boundServiceName, final SwingGui myService) {
@@ -86,8 +86,9 @@ public class InverseKinematics3DGui extends ServiceGui implements ActionListener
     gbc_jointBox.gridy = 2;
     panel.add(jointBox, gbc_jointBox);
 
-    JSlider slider = new JointSlider("omoplate");
-    jointBox.add(slider);
+    /*JSlider slider = new JointSlider("omoplate");
+    jointBox.add(slider);*/
+    
 
     Box axisBox = Box.createVerticalBox();
     GridBagConstraints gbc_axisBox = new GridBagConstraints();
@@ -181,6 +182,8 @@ public class InverseKinematics3DGui extends ServiceGui implements ActionListener
     btnxN.addActionListener(this);
     btnyN.addActionListener(this);
     btnzN.addActionListener(this);
+    
+    myService.undockTab("ik3D");
   }
 
   @Override
@@ -216,7 +219,7 @@ public class InverseKinematics3DGui extends ServiceGui implements ActionListener
       frame = "WORLD";
     }
 
-    log.info("Moving to %f %f %f in frame: %s: ", x, y, z, frame);
+    log.info("Moving to " + x + " " + y + " " + z + " in frame: " + frame);
     myService.send(boundServiceName, "moveTo", x, y, z, frame);
   }
 

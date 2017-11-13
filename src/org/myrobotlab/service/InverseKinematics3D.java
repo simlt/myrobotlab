@@ -66,10 +66,17 @@ public class InverseKinematics3D extends Service implements IKJointAnglePublishe
    */
   class Position extends Point {
     private static final long serialVersionUID = 1L;
+    private boolean isOriented = false;
 
     Position(double x, double y, double z, CoordinateFrame frame) {
       super(x, y, z, 0, 0, 0);
       toWorld(frame);
+    }
+    
+    Position(double x, double y, double z, double roll, double pitch, double yaw, CoordinateFrame frame) {
+      super(x, y, z, roll, pitch, yaw);
+      toWorld(frame);
+      isOriented = true;
     }
 
     // Convert the point to WORLD coordinates
@@ -129,11 +136,30 @@ public class InverseKinematics3D extends Service implements IKJointAnglePublishe
       }
       return ret;
     }
+
+    public boolean hasOrientation() {
+      return isOriented;
+    }
   }
 
   public InverseKinematics3D(String n) {
     super(n);
-    // TODO: init
+
+    // Default init
+    double[][] rightArmDH = {
+        {  0,   +90,   -40,  90},
+        { 76,   +90,     0, -90},
+        {285,   -90,    30,  90},
+        {-25,   -90,  -290,   0}
+    };
+    double[] armZYX = {0, 0, 90};          //Roll, Pitch, Yaw of arm wtr to world frame
+    double[] armOrigin = {144, 0, 370};   // With respect to world frame
+
+    initArm("RIGHT", rightArmDH);
+    // Setup transform to map arm points to world points
+    setArmBaseFrame(armOrigin[0], armOrigin[1], armOrigin[2], armZYX[0], armZYX[1], armZYX[2]);
+    
+    centerAllJoints();
   }
 
   public void initArm(String side, double[][] dhParams) {
@@ -242,20 +268,29 @@ public class InverseKinematics3D extends Service implements IKJointAnglePublishe
   }
 
   public void moveTo(double x, double y, double z) {
-    // TODO: allow passing roll pitch and yaw
-    moveTo(new Point(x, y, z, 0, 0, 0));
+    Position position = new Position(x, y, z, CoordinateFrame.WORLD);
+    moveTo(position);
   }
 
   public void moveTo(double x, double y, double z, String frameStr) {
+    Position position = new Position(x, y, z, getCoordinateFrame(frameStr));
+    moveTo(position);
+  }
+
+  public void moveTo(double x, double y, double z, double roll, double pitch, double yaw, String frameStr) {
+    Position position = new Position(x, y, z, roll, pitch, yaw, getCoordinateFrame(frameStr));
+    moveTo(position);
+  }
+  
+  private CoordinateFrame getCoordinateFrame(String frameStr) {
     CoordinateFrame frame;
     try {
       frame = CoordinateFrame.valueOf(frameStr);
     } catch (IllegalArgumentException e) {
-      log.error("moveTo is unable to find the coordinate frame for name: %s. Defaulting to WORLD", frameStr);
       frame = CoordinateFrame.WORLD;
+      log.warn("moveTo is unable to find the coordinate frame for name: %s. Defaulting to WORLD", frameStr);
     }
-    Position position = new Position(new Point(x, y, z, 0, 0, 0), frame);
-    moveTo(position);
+    return frame;
   }
 
   /**
@@ -346,7 +381,7 @@ public class InverseKinematics3D extends Service implements IKJointAnglePublishe
 
   public void moveTo(Position pos) {
     Point p = rotateAndTranslate(pos.getPoint(CoordinateFrame.BASE_ARM));
-    boolean success = currentArm.moveToGoal(p);
+    boolean success = currentArm.moveToGoal(p, pos.hasOrientation());
 
     if (success) {
       if (vinMoovApp != null) {
