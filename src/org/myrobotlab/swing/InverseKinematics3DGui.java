@@ -8,7 +8,9 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 import javax.swing.Box;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -18,10 +20,14 @@ import javax.swing.JTextPane;
 import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import javax.swing.event.PopupMenuEvent;
+import javax.swing.event.PopupMenuListener;
 
 import org.myrobotlab.kinematics.Point;
 import org.myrobotlab.logging.LoggerFactory;
 import org.myrobotlab.service.InverseKinematics3D;
+import org.myrobotlab.service.MapService;
+import org.myrobotlab.service.Runtime;
 import org.myrobotlab.service.SwingGui;
 import org.slf4j.Logger;
 
@@ -32,7 +38,9 @@ public class InverseKinematics3DGui extends ServiceGui implements ActionListener
 
   static final long serialVersionUID = 1L;
   public final static Logger log = LoggerFactory.getLogger(InverseKinematics3DGui.class);
-  // private InverseKinematics3D ik;
+  // transient private InverseKinematics3D ik;
+  transient private MapService map;
+
   private Point tcpPos;
   private JTextField xPos;
   private JTextField yPos;
@@ -41,13 +49,12 @@ public class InverseKinematics3DGui extends ServiceGui implements ActionListener
   private double[][] tcpPosList;
 
   enum FrameList {
-    WorldFrame,
-    ArmFrame,
+    WorldFrame, ArmFrame,
   }
 
   public InverseKinematics3DGui(final String boundServiceName, final SwingGui myService) {
     super(boundServiceName, myService);
-    // ik = (InverseKinematics3D) Runtime.getService(boundServiceName);
+    map = (MapService) Runtime.getService("i01.map");
 
     JPanel panel = new JPanel();
     display.add(panel);
@@ -73,27 +80,78 @@ public class InverseKinematics3DGui extends ServiceGui implements ActionListener
     btnCenter.addActionListener(this);
     GridBagConstraints gbc_btnCenter = new GridBagConstraints();
     gbc_btnCenter.fill = GridBagConstraints.BOTH;
-    gbc_btnCenter.insets = insets;
+    gbc_btnCenter.insets = new Insets(5, 5, 5, 0);
     gbc_btnCenter.gridx = 2;
     gbc_btnCenter.gridy = 0;
     panel.add(btnCenter, gbc_btnCenter);
 
-    Box jointBox = Box.createVerticalBox();
-    GridBagConstraints gbc_jointBox = new GridBagConstraints();
-    gbc_jointBox.fill = GridBagConstraints.BOTH;
-    gbc_jointBox.insets = insets;
-    gbc_jointBox.gridx = 0;
-    gbc_jointBox.gridy = 2;
-    panel.add(jointBox, gbc_jointBox);
+    Box mapBox = Box.createVerticalBox();
+    GridBagConstraints gbc_mapBox = new GridBagConstraints();
+    gbc_mapBox.fill = GridBagConstraints.HORIZONTAL;
+    gbc_mapBox.insets = new Insets(5, 5, 0, 5);
+    gbc_mapBox.gridx = 0;
+    gbc_mapBox.gridy = 2;
+    panel.add(mapBox, gbc_mapBox);
 
-    /*JSlider slider = new JointSlider("omoplate");
-    jointBox.add(slider);*/
-    
+    Box horizontalBox_1 = Box.createHorizontalBox();
+    mapBox.add(horizontalBox_1);
+
+    JLabel lblPositionName = new JLabel("Position name:");
+    horizontalBox_1.add(lblPositionName);
+
+    Component horizontalStrut_6 = Box.createHorizontalStrut(20);
+    horizontalBox_1.add(horizontalStrut_6);
+
+    DefaultComboBoxModel comboBoxPositionModel = new DefaultComboBoxModel();
+    JComboBox comboBoxPosition = new JComboBox(comboBoxPositionModel);
+    comboBoxPosition.setEditable(true);
+    comboBoxPosition.addPopupMenuListener(new PopupMenuListener() {
+      @Override
+      public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
+        updatePositionList(comboBoxPositionModel);
+      }
+
+      @Override
+      public void popupMenuWillBecomeInvisible(PopupMenuEvent e) {
+      }
+
+      @Override
+      public void popupMenuCanceled(PopupMenuEvent e) {
+      }
+    });
+    horizontalBox_1.add(comboBoxPosition);
+
+    Box horizontalBox_2 = Box.createHorizontalBox();
+    mapBox.add(horizontalBox_2);
+
+    JButton btnPositionLoad = new JButton("Load");
+    horizontalBox_2.add(btnPositionLoad);
+
+    Component horizontalStrut_7 = Box.createHorizontalStrut(20);
+    horizontalBox_2.add(horizontalStrut_7);
+
+    JButton btnPositionSave = new JButton("Save");
+    btnPositionSave.addActionListener(e -> {
+      myService.send("i01.map", "addLocation", comboBoxPosition.getSelectedItem().toString());
+      updatePositionList(comboBoxPositionModel);
+    });
+    horizontalBox_2.add(btnPositionSave);
+
+    Box horizontalBox_3 = Box.createHorizontalBox();
+    mapBox.add(horizontalBox_3);
+
+    JCheckBox chckbxIKmovement = new JCheckBox("IK (if stored)");
+    horizontalBox_3.add(chckbxIKmovement);
+
+    btnPositionLoad.addActionListener(e -> {
+      myService.send("i01.map", "moveToLocation", comboBoxPosition.getSelectedItem().toString(),
+          !chckbxIKmovement.isSelected());
+    });
 
     Box axisBox = Box.createVerticalBox();
     GridBagConstraints gbc_axisBox = new GridBagConstraints();
     gbc_axisBox.fill = GridBagConstraints.HORIZONTAL;
-    gbc_axisBox.insets = insets;
+    gbc_axisBox.insets = new Insets(5, 5, 0, 0);
     gbc_axisBox.gridx = 2;
     gbc_axisBox.gridy = 2;
     panel.add(axisBox, gbc_axisBox);
@@ -110,7 +168,7 @@ public class InverseKinematics3DGui extends ServiceGui implements ActionListener
     Box posBox = Box.createHorizontalBox();
     axisBox.add(posBox);
 
-    JLabel lblX = new JLabel("x");
+    JLabel lblX = new JLabel("x ");
     posBox.add(lblX);
     lblX.setLabelFor(xPos);
     xPos = new JTextField();
@@ -119,7 +177,7 @@ public class InverseKinematics3DGui extends ServiceGui implements ActionListener
     Component horizontalStrut = Box.createHorizontalStrut(20);
     posBox.add(horizontalStrut);
 
-    JLabel lblY = new JLabel("y");
+    JLabel lblY = new JLabel("y ");
     posBox.add(lblY);
     yPos = new JTextField();
     lblY.setLabelFor(yPos);
@@ -128,7 +186,7 @@ public class InverseKinematics3DGui extends ServiceGui implements ActionListener
     Component horizontalStrut_1 = Box.createHorizontalStrut(20);
     posBox.add(horizontalStrut_1);
 
-    JLabel lblZ = new JLabel("z");
+    JLabel lblZ = new JLabel("z ");
     posBox.add(lblZ);
     zPos = new JTextField();
     lblZ.setLabelFor(zPos);
@@ -182,15 +240,13 @@ public class InverseKinematics3DGui extends ServiceGui implements ActionListener
     btnxN.addActionListener(this);
     btnyN.addActionListener(this);
     btnzN.addActionListener(this);
-    
-    myService.undockTab("ik3D");
   }
 
   @Override
   public void actionPerformed(ActionEvent e) {
     String command = e.getActionCommand();
     log.info("Parsing command string: " + command);
-    int delta = 10;
+    int delta = 5;
     if (command.contains("-")) {
       delta = -delta;
     } else if (!command.contains("+")) {
@@ -272,6 +328,15 @@ public class InverseKinematics3DGui extends ServiceGui implements ActionListener
     xPos.setText(String.format("%.2f", tcpPos.getX()));
     yPos.setText(String.format("%.2f", tcpPos.getY()));
     zPos.setText(String.format("%.2f", tcpPos.getZ()));
+  }
+
+  private void updatePositionList(DefaultComboBoxModel comboBoxModel) {
+    if (map == null)
+      return;
+    comboBoxModel.removeAllElements();
+    for (String string : map.getLocationNames()) {
+      comboBoxModel.addElement(string);
+    }
   }
 
   public class AxisJog extends JTextPane {

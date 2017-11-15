@@ -32,6 +32,7 @@ import com.jme3.light.DirectionalLight;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
+import com.jme3.math.Quaternion;
 import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
@@ -156,8 +157,9 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
 
     inputManager.setCursorVisible(true);
     flyCam.setEnabled(false);
-    cam.setLocation(new Vector3f(0f, 0f, 900f));
-    // TODO set camera orientation
+    cam.setLocation(new Vector3f(0f, 400f, 800f));
+    Vector3f tiltDown = new Vector3f(0.0f, -FastMath.tan(20.0f * FastMath.DEG_TO_RAD), -1.0f);
+    cam.lookAtDirection(tiltDown, cam.getUp());
 
     inputManager.addMapping("MouseClickL", new MouseButtonTrigger(MouseInput.BUTTON_LEFT));
     inputManager.addListener(analogListener, "MouseClickL");
@@ -605,7 +607,7 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
     point = new Node("point");
     point.attachChild(geom);
     point.rotate(-FastMath.PI / 2, FastMath.PI, 0f);
-    rootNode.attachChild(point);
+    //rootNode.attachChild(point);
 
     if (service != null) {
       synchronized (service) {
@@ -640,8 +642,8 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
     vertexBuffer = mapMesh.getBuffer(Type.Position);
     geom = new Geometry("MapMesh", mapMesh);
     mat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-    //map.setTexture("DiffuseMap", assetManager.loadTexture("Textures/map.JPG"));
-    mat.setTexture("ColorMap", assetManager.loadTexture("Textures/checker.jpg"));
+    mat.setTexture("ColorMap", assetManager.loadTexture("Textures/mappa.jpg"));
+    //mat.setTexture("ColorMap", assetManager.loadTexture("Textures/checker.jpg"));
     //mat.getAdditionalRenderState().setBlendMode(BlendMode.Alpha);
     geom.setMaterial(mat);
     //geom.rotate(0f, 0f, 0f);

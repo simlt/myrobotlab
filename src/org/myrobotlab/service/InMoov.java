@@ -1935,8 +1935,8 @@ public class InMoov extends Service {
   public Boolean VinmoovFullScreen = false;
   public String VinmoovBackGroundColor = "Grey";
 
-  public int VinmoovWidth = 800;
-  public int VinmoovHeight = 600;
+  public int VinmoovWidth = (int) (800 * 1.5);
+  public int VinmoovHeight = (int) (600 * 1.5);
   private Boolean debugVinmoov = true;
 
   // show some infos to jme screen

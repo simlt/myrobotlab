@@ -57,8 +57,8 @@ public class MapService extends Service {
       this.joints = joints;
     }
 
-    public void moveTo() {
-      if (joints != null) {
+    public void moveTo(boolean jointMovement) {
+      if (joints != null && jointMovement) {
         send("i01.rightArm.omoplate", "moveTo", joints[0]);
         send("i01.rightArm.shoulder", "moveTo", joints[1]);
         send("i01.rightArm.rotate", "moveTo", joints[2]);
@@ -68,7 +68,11 @@ public class MapService extends Service {
       } else if (point != null) {
         send("ik3D", "moveTo", point[0], point[1], point[2]);
       } else {
-        log.warn("MapService: no arm position stored for " + name);
+        if (jointMovement) {
+          log.warn("MapService: no arm position stored for " + name);
+        } else {
+          log.warn("MapService: no arm IK data stored for " + name);
+        }
         return;
       }
     }
@@ -170,15 +174,23 @@ public class MapService extends Service {
    */
 
   public void moveToLocation(String name) {
+    moveToLocation(name, true);
+  }
+
+  public void moveToLocation(String name, boolean jointMovement) {
     Location loc = locationMap.get(name);
     if (loc == null) {
       log.warn("MapService: no location named " + name + " exists.");
     }
-    loc.moveTo();
+    loc.moveTo(jointMovement);
   }
 
-  public Object[] getLocations() {
-    return locationMap.values().toArray();
+  public Location[] getLocations() {
+    return locationMap.values().toArray(new Location[0]);
+  }
+
+  public String[] getLocationNames() {
+    return locationMap.keySet().toArray(new String[0]);
   }
 
   public String getPrintableLocations() {
