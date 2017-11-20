@@ -32,7 +32,6 @@ import com.jme3.light.DirectionalLight;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
-import com.jme3.math.Quaternion;
 import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
@@ -41,6 +40,7 @@ import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.VertexBuffer;
 import com.jme3.scene.VertexBuffer.Type;
+import com.jme3.scene.debug.Arrow;
 import com.jme3.scene.shape.Box;
 import com.jme3.scene.shape.Cylinder;
 import com.jme3.system.AppSettings;
@@ -84,6 +84,8 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
   protected Texture2D textureBat[] = new Texture2D[101];
   protected VertexBuffer vertexBuffer;
   protected Mesh mapMesh;
+  
+  private final static boolean debugAxis = false; // Show debug axis on pieces
 
   public void setLeftArduinoConnected(boolean param) {
     leftArduinoConnected = param;
@@ -290,23 +292,35 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
     maps.put("ttorso", new Mapper(0, 180, 80, 100));
 
     node = new Node("rightS");
+    attachCoordinateAxes(node);
     parentNode = nodes.get("ttorso");
     parentNode.attachChild(node);
-    node.setLocalTranslation(new Vector3f(0, 300, 0));
+    node.setLocalTranslation(new Vector3f(0, 300.8f, 0));
     rotationMask = Vector3f.UNIT_Z.mult(1);
     node.setUserData("rotationMask_x", rotationMask.x);
     node.setUserData("rotationMask_y", rotationMask.y);
     node.setUserData("rotationMask_z", rotationMask.z);
     node.setUserData("currentAngle", 0);
     nodes.put("rightS", node);
+    
+    // Right arm DH parameters
+    float aOmoplate = 39.5f;
+    float dShoulder = 78.2f;
+    float dRotate = 281.8f;
+    float aRotate = 29.6f;
+    float dBicep = -8.2f;
+    float aBicep = -13.7f;
+    float dWrist = -289.1f;
 
     node = new Node("Romoplate");
+    attachCoordinateAxes(node);
     parentNode = nodes.get("rightS");
     parentNode.attachChild(node);
     spatial = assetManager.loadModel("Models/Romoplate1.j3o");
     spatial.setName("Romoplate");
     node.attachChild(spatial);
-    node.setLocalTranslation(new Vector3f(-143, 0, -17));
+    //node.setLocalTranslation(new Vector3f(-143, 0, -17));
+    node.setLocalTranslation(new Vector3f(-143.1f, 0, -12.2f)); // Center of omoplate axis 17-29.2 from ttorso
     rotationMask = Vector3f.UNIT_Z.mult(-1);
     node.setUserData("rotationMask_x", rotationMask.x);
     node.setUserData("rotationMask_y", rotationMask.y);
@@ -319,12 +333,13 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
     maps.put("Romoplate", new Mapper(0, 180, 10, 70));
 
     node = new Node("Rshoulder");
+    attachCoordinateAxes(node);
     parentNode = nodes.get("Romoplate");
     parentNode.attachChild(node);
     spatial = assetManager.loadModel("Models/Rshoulder1.j3o");
     spatial.setName("Rshoulder");
     node.attachChild(spatial);
-    node.setLocalTranslation(new Vector3f(-23, -45, 0));
+    node.setLocalTranslation(new Vector3f(0, -aOmoplate, 0));
     rotationMask = Vector3f.UNIT_X.mult(-1);
     node.setUserData("rotationMask_x", rotationMask.x);
     node.setUserData("rotationMask_y", rotationMask.y);
@@ -336,12 +351,14 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
     maps.put("Rshoulder", new Mapper(0, 180, 0, 180));
 
     node = new Node("Rrotate");
+    attachCoordinateAxes(node);
     parentNode = nodes.get("Rshoulder");
     parentNode.attachChild(node);
     spatial = assetManager.loadModel("Models/rotate1.j3o");
     spatial.setName("Rrotate");
     node.attachChild(spatial);
-    node.setLocalTranslation(new Vector3f(-57, -55, 8));
+    //node.setLocalTranslation(new Vector3f(-57, -55, 8));
+    node.setLocalTranslation(new Vector3f(-dShoulder, 0, 0));
     rotationMask = Vector3f.UNIT_Y.mult(-1);
     node.setUserData("rotationMask_x", rotationMask.x);
     node.setUserData("rotationMask_y", rotationMask.y);
@@ -353,24 +370,25 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
     maps.put("Rrotate", new Mapper(0, 180, 46, 160));
 
     node = new Node("Rbicep");
+    attachCoordinateAxes(node);
     parentNode = nodes.get("Rrotate");
     parentNode.attachChild(node);
     spatial = assetManager.loadModel("Models/Rbicep1.j3o");
     spatial.setName("Rbicep");
     node.attachChild(spatial);
-    node.setLocalTranslation(new Vector3f(5, -225, -32));
+    node.setLocalTranslation(new Vector3f(-dBicep, -dRotate, -aRotate));
     rotationMask = Vector3f.UNIT_X.mult(-1);
     node.setUserData("rotationMask_x", rotationMask.x);
     node.setUserData("rotationMask_y", rotationMask.y);
     node.setUserData("rotationMask_z", rotationMask.z);
     node.setUserData("currentAngle", 0);
-    angle = rotationMask.mult((float) Math.toRadians(30));
-    node.rotate(angle.x, angle.y, angle.z);
+    //angle = rotationMask.mult((float) Math.toRadians(30));
+    //node.rotate(angle.x, angle.y, angle.z);
     // node.rotateUpTo(angle);
     nodes.put("Rbicep", node);
     maps.put("Rbicep", new Mapper(0, 180, 5, 60));
 
-    /*node = new Node("leftS");
+    /* node = new Node("leftS");
     parentNode = nodes.get("ttorso");
     parentNode.attachChild(node);
     node.setLocalTranslation(new Vector3f(0, 300, 0));
@@ -447,24 +465,25 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
     */
 
     node = new Node("RWrist");
+    attachCoordinateAxes(node);
     parentNode = nodes.get("Rbicep");
     parentNode.attachChild(node);
     //spatial = assetManager.loadModel("Models/RWristFinger.j3o");
     spatial = assetManager.loadModel("Models/RhandPointing.j3o");
     spatial.setName("RWrist");
     node.attachChild(spatial);
-    node.setLocalTranslation(new Vector3f(15, -290, -10));
-    rotationMask = Vector3f.UNIT_Y.mult(-1);
+    node.setLocalTranslation(new Vector3f(0, dWrist, aBicep));
+    rotationMask = Vector3f.UNIT_Y.mult(1);
     node.setUserData("rotationMask_x", rotationMask.x);
     node.setUserData("rotationMask_y", rotationMask.y);
     node.setUserData("rotationMask_z", rotationMask.z);
     node.setUserData("currentAngle", 0);
-    angle = rotationMask.mult((float) Math.toRadians(-90));
+    angle = rotationMask.mult((float) Math.toRadians(90));
     node.rotate(angle.x, angle.y, angle.z);
     nodes.put("RWrist", node);
     maps.put("RWrist", new Mapper(0, 180, 180, 0));
 
-    /*node = new Node("LWrist");
+    /* node = new Node("LWrist");
     parentNode = nodes.get("bicep");
     parentNode.attachChild(node);
     spatial = assetManager.loadModel("Models/LWristFinger.j3o");
@@ -479,8 +498,7 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
     angle = rotationMask.mult((float) Math.toRadians(-90));
     node.rotate(angle.x, angle.y, angle.z);
     nodes.put("LWrist", node);
-    maps.put("LWrist", new Mapper(0, 180, 0, 180));
-    fff*/
+    maps.put("LWrist", new Mapper(0, 180, 0, 180)); */
 
     node = new Node("neck");
     parentNode = nodes.get("ttorso");
@@ -617,11 +635,6 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
     
     // Map object
     Vector3f[] mapVertices = new Vector3f[4];
-    //double[][] points = { { -100, 200, 200 }, { 100, 200, 200 }, { -100, 200, 300 }, { 100, 200, 300 } };
-    /* mapVertices[0] = new Vector3f((float)points[0][0], (float)points[0][1], (float)points[0][2]);
-    mapVertices[1] = new Vector3f((float)points[1][0], (float)points[1][1], (float)points[1][2]);
-    mapVertices[2] = new Vector3f((float)points[2][0], (float)points[2][1], (float)points[2][2]);
-    mapVertices[3] = new Vector3f((float)points[3][0], (float)points[3][1], (float)points[3][2]); */
     mapVertices[0] = new Vector3f(0,0,0);
     mapVertices[1] = new Vector3f(0,0,0);
     mapVertices[2] = new Vector3f(0,0,0);
@@ -638,13 +651,11 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
     mapMesh.setBuffer(Type.Index,    3, BufferUtils.createIntBuffer(indexes));
     mapMesh.updateBound();
 
-    //Box box = new Box(75f,50f,25f);
     vertexBuffer = mapMesh.getBuffer(Type.Position);
     geom = new Geometry("MapMesh", mapMesh);
     mat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
     mat.setTexture("ColorMap", assetManager.loadTexture("Textures/mappa.jpg"));
     //mat.setTexture("ColorMap", assetManager.loadTexture("Textures/checker.jpg"));
-    //mat.getAdditionalRenderState().setBlendMode(BlendMode.Alpha);
     geom.setMaterial(mat);
     //geom.rotate(0f, 0f, 0f);
     //geom.setLocalTranslation(0f, -200f, -200f);
@@ -698,21 +709,24 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
         float currentAngle = (float) node.getUserData("currentAngle");
         Mapper map = maps.get(node.getName());
         float targetAngle = (float) map.calcOutput(event.pos);
-        float deltaAngle = targetAngle - currentAngle;
-        float rotationTick = (float) (tpf * event.velocity);
-        if (deltaAngle < 0) {
-          rotationTick *= -1.0f;
+        double velocity = event.velocity;
+        if (velocity < 0) {
+          velocity = 180.0f; // Set arbitrary velocity for animation
         }
-        // Check if destination reached or if velocity is unlimited (-1) and if so update to final position
-        if ((event.velocity < 0) || (Math.abs(rotationTick) > Math.abs(deltaAngle))) {
-          rotationTick = deltaAngle;
+        float remainingMovementAngle = targetAngle - currentAngle;
+        // Set movement direction
+        if (remainingMovementAngle < 0) {
+          velocity = -velocity;
+        }
+        float rotationTick = (float) (tpf * velocity);
+        // Check if destination reached and if so update to final position
+        if (Math.abs(rotationTick) > Math.abs(remainingMovementAngle)) {
+          rotationTick = remainingMovementAngle;
           endedMovement = true;
         }
         Vector3f angle = rotMask.mult((float) (rotationTick * Math.PI / 180));
         node.rotate(angle.x, angle.y, angle.z);
         node.setUserData("currentAngle", currentAngle + rotationTick);
-        servoToNode.put(event.name, node);
-        nodes.put(node.getName(), node);
 
         if (endedMovement) {
           eventItr.remove();
@@ -951,9 +965,9 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
       return;
     }
 
-    // Servo inputs are already mapped to real world angles, se no need to
+    // Servo inputs are already mapped to real world angles, so no need to do
     // anything with mappers (map 1 to 1)
-    Mapper mapper = new Mapper(0, 180, 0, 180);
+    Mapper mapper = new Mapper(-180, 360, -180, 360);
     maps.put("Romoplate", mapper);
     maps.put("Rshoulder", mapper);
     maps.put("Rrotate", mapper);
@@ -961,30 +975,28 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
     maps.put("RWrist", mapper);
 
     Vector3f translation = shoulder.getLocalTranslation();
-    float shoulderXoffset = translation.x;
     // Omoplate length (a)
-    translation.y = (float) dhParams[0][2];
+    translation.y = (float) -dhParams[0][2];
     shoulder.setLocalTranslation(translation);
 
     translation = rotate.getLocalTranslation();
-    float rotateYoffset = translation.y;
-    // Rotate offset (d)
-    translation.x = (float) (-shoulderXoffset - dhParams[1][0]);
+    // Shoulder offset (d)
+    translation.x = (float) (-dhParams[1][0]);
     rotate.setLocalTranslation(translation);
 
     translation = bicep.getLocalTranslation();
     // Bicep offset (d)
-    translation.y = (float) (-rotateYoffset - dhParams[2][0]);
+    translation.x = (float) (-dhParams[3][0]);
+    // Rotate offset (d)
+    translation.y = (float) (-dhParams[2][0]);
     // Rotate length (a)
     translation.z = (float) (-dhParams[2][2]);
     bicep.setLocalTranslation(translation);
 
     translation = wrist.getLocalTranslation();
     // Bicep length (a)
-    translation.y = (float) (dhParams[3][2]);
-    // TODO check if wrist is offset
-    // Rotate
-    // translation.z = (float) (-bicepZoffset - dhParams[3][0]);
+    translation.y = (float) (dhParams[4][0]);
+    translation.z = (float) (dhParams[3][2]);
     // length (a)
     wrist.setLocalTranslation(translation);
   }
@@ -1008,5 +1020,31 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
         data.put(i * mapCalibrationPoints[i].length + j, (float)mapCalibrationPoints[i][j]);
     vertexBuffer.setUpdateNeeded();
     mapMesh.updateBound();
+  }
+
+  private void attachCoordinateAxes(Node node) {
+    if (!debugAxis)
+      return;
+    Arrow arrow = new Arrow(Vector3f.UNIT_X);
+    arrow.setLineWidth(4); // make arrow thicker
+    putShape(node, arrow, ColorRGBA.Red);
+
+    arrow = new Arrow(Vector3f.UNIT_Y);
+    arrow.setLineWidth(4); // make arrow thicker
+    putShape(node, arrow, ColorRGBA.Green);
+
+    arrow = new Arrow(Vector3f.UNIT_Z);
+    arrow.setLineWidth(4); // make arrow thicker
+    putShape(node, arrow, ColorRGBA.Blue);
+  }
+
+  private Geometry putShape(Node parent, Mesh shape, ColorRGBA color) {
+    Geometry g = new Geometry("coordinate axis", shape);
+    Material mat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+    mat.getAdditionalRenderState().setWireframe(true);
+    mat.setColor("Color", color);
+    g.setMaterial(mat);
+    rootNode.attachChild(g);
+    return g;
   }
 }

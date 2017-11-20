@@ -119,12 +119,12 @@ public class MarySpeech extends AbstractSpeechSynthesis implements TextListener 
 			}
 			super.run();
 
-			try {
+			/*try {
 				Thread.sleep(100);
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-			}
+			}*/
 			invoke("publishEndSpeaking", utterance);
 		}
 	}

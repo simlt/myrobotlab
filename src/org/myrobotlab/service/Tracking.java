@@ -137,9 +137,11 @@ public class Tracking extends Service {
    */
   //TODO: should be a function of the current frame rate  for now, require at least 1.
   int faceFoundFrameCount = 0;
-  int faceFoundFrameCountMin = 2;
-  //int faceLostFrameCount = 0;
-  //int faceLostFrameCountMin = 20;
+  int faceFoundFrameThreshold = 4;
+  int faceLostFrameCount = 0;
+  int faceLostFrameThreshold = 4;
+  int faceLostEventFrameThreshold = 20 * 5; // 5 seconds @ 20 fps
+  boolean lostTrackTriggerEnabled = false;
   // -------------- System Specific Initialization End --------------
 
   boolean scan = false;
@@ -214,6 +216,10 @@ public class Tracking extends Service {
 
   public OpenCVData foundFace(OpenCVData data) {
     return data;
+  }
+
+  public void lostFace() {
+    return;
   }
 
   public ServoController getArduino() {
@@ -359,20 +365,17 @@ public class Tracking extends Service {
         ArrayList<Rectangle> bb = data.getBoundingBoxArray();
 
         if (bb != null && bb.size() > 0) {
-
-          // data.logKeySet();
-          // log.error("{}",bb.size());
-
-          // found face
-          // find centroid of first bounding box
-          lastPoint.x = bb.get(0).x + bb.get(0).width / 2;
-          lastPoint.y = bb.get(0).y + bb.get(0).height / 2;
-          updateTrackingPoint(lastPoint);
-
           ++faceFoundFrameCount;
+          if (faceFoundFrameCount > faceFoundFrameThreshold) {
+            faceLostFrameCount = 0;
+            lostTrackTriggerEnabled = true;
+            // found face
+            // find centroid of first bounding box
+            lastPoint.x = bb.get(0).x + bb.get(0).width / 2;
+            lastPoint.y = bb.get(0).y + bb.get(0).height / 2;
+            updateTrackingPoint(lastPoint);
 
-          // dead zone and state shift
-          if (faceFoundFrameCount > faceFoundFrameCountMin) {
+            // dead zone and state shift
             // TODO # of frames for verification
             log.info("found face");
             invoke("foundFace", data);
@@ -381,24 +384,31 @@ public class Tracking extends Service {
             // pid.init("y");
             // data.saveToDirectory("data");
           }
-
         } else {
+          ++faceLostFrameCount;
           // lost track
           // log.info("Lost track...");
-          faceFoundFrameCount = 0;
-          if (scan) {
-            log.info("Scan enabled...");
-            TrackingServoData x = servoControls.get("x");
-            TrackingServoData y = servoControls.get("y");
-            double xpos = x.servoControl.getPos();
-            if (xpos + x.scanStep >= x.servoControl.getMaxInput() && x.scanStep > 0 || xpos + x.scanStep <= x.servoControl.getMinInput() && x.scanStep < 0) {
-              x.scanStep *= -1;
-              double newY = y.servoControl.getMinInput() + (Math.random() * (y.servoControl.getMaxInput() - y.servoControl.getMinInput()));
-              y.servoControl.moveTo(newY);
+          if (faceLostFrameCount > faceLostFrameThreshold) {
+            faceFoundFrameCount = 0;
+            if (scan) {
+              log.info("Scan enabled...");
+              TrackingServoData x = servoControls.get("x");
+              TrackingServoData y = servoControls.get("y");
+              double xpos = x.servoControl.getPos();
+              if (xpos + x.scanStep >= x.servoControl.getMaxInput() && x.scanStep > 0 || xpos + x.scanStep <= x.servoControl.getMinInput() && x.scanStep < 0) {
+                x.scanStep *= -1;
+                double newY = y.servoControl.getMinInput() + (Math.random() * (y.servoControl.getMaxInput() - y.servoControl.getMinInput()));
+                y.servoControl.moveTo(newY);
+              }
+              x.servoControl.moveTo(xpos + x.scanStep);
             }
-            x.servoControl.moveTo(xpos + x.scanStep);
+            if (lostTrackTriggerEnabled && faceLostFrameCount > faceLostEventFrameThreshold) {
+              lostTrackTriggerEnabled = false;
+              log.info("No face not found for at least 5 seconds");
+              invoke("lostFace");
+            }
+            // state = STATE_FACE_DETECT_LOST_TRACK;
           }
-          // state = STATE_FACE_DETECT_LOST_TRACK;
         }
 
         // if scanning stop scanning

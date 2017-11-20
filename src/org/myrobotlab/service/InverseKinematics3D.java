@@ -176,8 +176,8 @@ public class InverseKinematics3D extends Service implements IKJointAnglePublishe
           InMoov inMoov = (InMoov) Runtime.getService("i01");
           try {
             vinMoovApp = inMoov.startVinMoov();
-            // Update geometry from the owning thread
-            inMoov.invoke("setArmGeometry", side, dhParams);
+            // Update geometry from the owning thread DO THIS with 5DOF matrix in python
+            //inMoov.invoke("setArmGeometry", side, dhParams);
             float[] virtualArmOriginF = vinMoovApp.getVirtualArmOrigin();
             virtualArmOrigin = new Point(virtualArmOriginF[0], virtualArmOriginF[1], virtualArmOriginF[2], 0, 0, 0);
           } catch (InterruptedException e) {
@@ -384,9 +384,9 @@ public class InverseKinematics3D extends Service implements IKJointAnglePublishe
     boolean success = currentArm.moveToGoal(p, pos.hasOrientation());
 
     if (success) {
-      if (vinMoovApp != null) {
+      /*if (vinMoovApp != null) {
         vinMoovApp.addPoint(pos.getPoint(CoordinateFrame.WORLD_VIRTUAL));
-      }
+      }*/
       publishTelemetry();
     }
   }

@@ -1933,7 +1933,7 @@ public class InMoov extends Service {
   }
 
   public Boolean VinmoovFullScreen = false;
-  public String VinmoovBackGroundColor = "Grey";
+  public String VinmoovBackGroundColor = "DarkGray";
 
   public int VinmoovWidth = (int) (800 * 1.5);
   public int VinmoovHeight = (int) (600 * 1.5);
