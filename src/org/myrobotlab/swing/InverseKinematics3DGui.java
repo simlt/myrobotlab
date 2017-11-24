@@ -41,12 +41,13 @@ public class InverseKinematics3DGui extends ServiceGui implements ActionListener
   // transient private InverseKinematics3D ik;
   transient private MapService map;
 
-  private Point tcpPos;
   private JTextField xPos;
   private JTextField yPos;
   private JTextField zPos;
   private FrameList selectedFrame;
-  private double[][] tcpPosList;
+  private double[] tcpTargetPos;
+  private double[][] tcpCurrentPos;
+  public boolean updateTarget = true;  // used to update target pos from current joint position when not setting manual x,y,z position
 
   enum FrameList {
     WorldFrame, ArmFrame,
@@ -144,6 +145,7 @@ public class InverseKinematics3DGui extends ServiceGui implements ActionListener
     horizontalBox_3.add(chckbxIKmovement);
 
     btnPositionLoad.addActionListener(e -> {
+      updateTarget = true;
       myService.send("i01.map", "moveToLocation", comboBoxPosition.getSelectedItem().toString(),
           !chckbxIKmovement.isSelected());
     });
@@ -253,20 +255,21 @@ public class InverseKinematics3DGui extends ServiceGui implements ActionListener
       send(command);
       return;
     }
-    if (tcpPos == null) {
+    if (tcpTargetPos == null) {
       log.warn("TCP position is not set yet for moveTo");
       return;
     }
-    double x = tcpPos.getX();
-    double y = tcpPos.getY();
-    double z = tcpPos.getZ();
     if (command.contains("X")) {
-      x += delta;
+      tcpTargetPos[0] += delta;
     } else if (command.contains("Y")) {
-      y += delta;
+      tcpTargetPos[1] += delta;
     } else if (command.contains("Z")) {
-      z += delta;
+      tcpTargetPos[2] += delta;
     }
+    updateTarget = false;
+    double x = tcpTargetPos[0];
+    double y = tcpTargetPos[1];
+    double z = tcpTargetPos[2];
 
     String frame = "WORLD";
     if (selectedFrame.equals(FrameList.ArmFrame)) {
@@ -277,6 +280,7 @@ public class InverseKinematics3DGui extends ServiceGui implements ActionListener
 
     log.info("Moving to " + x + " " + y + " " + z + " in frame: " + frame);
     myService.send(boundServiceName, "moveTo", x, y, z, frame);
+    updateTcpLabel();
   }
 
   @Override
@@ -310,24 +314,26 @@ public class InverseKinematics3DGui extends ServiceGui implements ActionListener
   }
 
   public void onTcpPosition(double[][] tcp) {
-    tcpPosList = tcp;
+    tcpCurrentPos = tcp;
     updateTcpLabel();
   }
 
   private void updateTcpLabel() {
-    if (tcpPosList == null) {
-      return;
+    if (updateTarget) {
+      if (tcpCurrentPos == null) {
+        return;
+      }
+      int index;
+      if (selectedFrame.equals(FrameList.ArmFrame)) {
+        index = 0;
+      } else {
+        index = 1;
+      }
+      tcpTargetPos = tcpCurrentPos[index].clone();
     }
-    int index;
-    if (selectedFrame.equals(FrameList.ArmFrame)) {
-      index = 0;
-    } else {
-      index = 1;
-    }
-    tcpPos = new Point(tcpPosList[index][0], tcpPosList[index][1], tcpPosList[index][2], 0, 0, 0);
-    xPos.setText(String.format("%.2f", tcpPos.getX()));
-    yPos.setText(String.format("%.2f", tcpPos.getY()));
-    zPos.setText(String.format("%.2f", tcpPos.getZ()));
+    xPos.setText(String.format("%.2f", tcpTargetPos[0]));
+    yPos.setText(String.format("%.2f", tcpTargetPos[1]));
+    zPos.setText(String.format("%.2f", tcpTargetPos[2]));
   }
 
   private void updatePositionList(DefaultComboBoxModel comboBoxModel) {

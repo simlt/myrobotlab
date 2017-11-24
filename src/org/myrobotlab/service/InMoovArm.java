@@ -355,28 +355,14 @@ public class InMoovArm extends Service implements IKJointAngleListener {
 
   @Override
   public void onJointAngles(Map<String, Double> angleMap) {
-    ArrayList<String> servos = new ArrayList<String>();
-    servos.add("omoplate");
-    servos.add("shoulder");
-    servos.add("rotate");
-    servos.add("bicep");
-    for (String s : servos) {
-      if (angleMap.containsKey(s)) {
-        // NOTE: Also negative angles are acceptable
-        Double angle = angleMap.get(s) % 360.0;
-        if ("omoplate".equals(s)) {
-          omoplate.moveTo(angle.intValue());
-        }
-        if ("shoulder".equals(s)) {
-          shoulder.moveTo(angle.intValue());
-        }
-        if ("rotate".equals(s)) {
-          rotate.moveTo(angle.intValue());
-        }
-        if ("bicep".equals(s)) {
-          bicep.moveTo(angle.intValue());
-        }
-      }
+    ArrayList<Servo> servos = new ArrayList<>();
+    servos.add(omoplate);
+    servos.add(shoulder);
+    servos.add(rotate);
+    servos.add(bicep);
+    for (Servo s : servos) {
+      Double angle = angleMap.get(s.getName()) % 360.0;
+      s.moveTo(angle.intValue());
     }
   }
 
@@ -419,37 +405,33 @@ public class InMoovArm extends Service implements IKJointAngleListener {
   }
 
   // DHparams d, theta, r, alpha (units are in mm and deg)
-  public DHRobotArm getDHRobotArm(double[][] dhParams) {
+  public DHRobotArm getDHRobotArm(Service listeningService, double[][] dhParams) {
     DHRobotArm arm = new DHRobotArm();
     for (int joint = 0; joint < dhParams.length; ++joint) {
-      String name;
       Servo servo;
       switch (joint) {
       default:
       case 0:
-        name = "omoplate";
         servo = omoplate;
         break;
       case 1:
-        name = "shoulder";
         servo = shoulder;
         break;
       case 2:
-        name = "rotate";
         servo = rotate;
         break;
       case 3:
-        name = "bicep";
         servo = bicep;
         break;
       }
       // Convert theta and alpha from degrees to radians
       double theta = MathUtils.degToRad(dhParams[joint][1]);
-      DHLink link = new DHLink(name, dhParams[joint][0], dhParams[joint][2], theta,
+      DHLink link = new DHLink(servo.getName(), dhParams[joint][0], dhParams[joint][2], theta,
           MathUtils.degToRad(dhParams[joint][3]));
       link.setMin(theta + MathUtils.degToRad(servo.getMinInput()));
       link.setMax(theta + MathUtils.degToRad(servo.getMaxInput()));
       arm.addLink(link);
+      servo.addIKServoEventListener(listeningService);
     }
     return arm;
   }

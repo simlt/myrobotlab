@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import org.myrobotlab.framework.Service;
@@ -22,7 +23,7 @@ public class MapService extends Service {
   private double[] currentTcpPoint = { -1, -1, -1 };
   private double[] currentJointAngles = { -1, -1, -1, -1 };
 
-  private Map<String, Location> locationMap = new HashMap<>();
+  private Map<String, Location> locationMap = new TreeMap<>();
 
   // calibration points in world coordinates NO, NE, SO, SE
   private double[][] mapCalibrationPoints;
@@ -109,10 +110,10 @@ public class MapService extends Service {
 
   public void onJointAngles(Map<String, Double> angleMap) {
     // omoplate, shoulder, rotate, bicep
-    currentJointAngles[0] = angleMap.get("omoplate");
-    currentJointAngles[1] = angleMap.get("shoulder");
-    currentJointAngles[2] = angleMap.get("rotate");
-    currentJointAngles[3] = angleMap.get("bicep");
+    currentJointAngles[0] = angleMap.get("i01.rightArm.omoplate");
+    currentJointAngles[1] = angleMap.get("i01.rightArm.shoulder");
+    currentJointAngles[2] = angleMap.get("i01.rightArm.rotate");
+    currentJointAngles[3] = angleMap.get("i01.rightArm.bicep");
   }
 
   public void loadMapCalibration(double[][] mapCalibrationPoints) {

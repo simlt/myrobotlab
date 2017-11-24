@@ -15,6 +15,7 @@ import org.myrobotlab.logging.Level;
 import org.myrobotlab.logging.LoggerFactory;
 import org.myrobotlab.logging.LoggingFactory;
 import org.myrobotlab.math.MathUtils;
+import org.myrobotlab.service.Servo.IKData;
 import org.myrobotlab.service.data.JoystickData;
 import org.myrobotlab.service.interfaces.IKJointAnglePublisher;
 import org.myrobotlab.service.interfaces.PointsListener;
@@ -52,6 +53,7 @@ public class InverseKinematics3D extends Service implements IKJointAnglePublishe
   transient private InMoov3DApp vinMoovApp = null;
 
   transient InputTrackingThread trackingThread = null;
+  private double[] targetPoint;
 
   enum CoordinateFrame {
     WORLD, // World fixed frame
@@ -166,10 +168,10 @@ public class InverseKinematics3D extends Service implements IKJointAnglePublishe
     if ("RIGHT".equals(side)) {
       InMoovArm arm = (InMoovArm) Runtime.getService("i01.rightArm");
       if (arm != null) {
-        DHRobotArm dhRobotArm = arm.getDHRobotArm(dhParams);
+        DHRobotArm dhRobotArm = arm.getDHRobotArm(this, dhParams);
         setCurrentArm(dhRobotArm);
         // dhRobotArm.setIk3D(this);
-        addListener("publishJointAngles", "i01.rightArm", "onJointAngles");
+        addListener("publishJointAngles", arm.getName(), "onJointAngles");
 
         // Update virtualInmoov parameters
         if (vinMoovApp == null) {
@@ -332,6 +334,7 @@ public class InverseKinematics3D extends Service implements IKJointAnglePublishe
     Matrix rotMatrix = Matrix.zRotation(roll).multiply(Matrix.yRotation(pitch)).multiply(Matrix.xRotation(yaw));
     baseToWorldTransform = trMatrix.multiply(rotMatrix);
     Point armOrigin = new Point(dx, dy, dz, 0, 0, 0);
+    // TODO check this
     worldToVirtualTranslation = armOrigin.subtract(virtualArmOrigin);
   }
 
@@ -401,6 +404,11 @@ public class InverseKinematics3D extends Service implements IKJointAnglePublishe
       angleMap.put(jointName, theta);
     }
     invoke("publishJointAngles", angleMap);
+
+    // publishPositions();
+  }
+
+  private void publishPositions() {
     // we want to publish the joint positions
     // this way we can render on the web gui..
     double[][] jointPositionMap = createJointPositionMap();
@@ -606,6 +614,26 @@ public class InverseKinematics3D extends Service implements IKJointAnglePublishe
     // TODO: track the desired position independently of the current position.
     // we will allow translation, x,y,z
     // for the input point.
+  }
+  
+  public void onIKServoEvent(IKData data) {
+    for (DHLink l : currentArm.getLinks()) {
+      if (l.getName().equals(data.name)) {
+        l.addPositionValue(data.pos);
+        l.setState(data.state);
+        l.setVelocity(data.velocity);
+        l.setTargetPos(data.targetPos);
+        l.setCurrentPos(data.pos);
+      }
+    }
+    if (currentArm.armMovementEnds()) {
+      publishPositions();
+    }
+  }
+  
+  
+  private double[] getTargetPoint() {
+    return targetPoint;
   }
 
   /**
