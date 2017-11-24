@@ -45,6 +45,7 @@ public class WebkitSpeechRecognition extends Service implements SpeechRecognizer
   public String lastThingRecognized = "";
   private String language = "en-US";
   private boolean autoListen = false;
+  public boolean startListeningAtSpeakEnd = true;
 
   HashMap<String, Command> commands = new HashMap<String, Command>();
 
@@ -143,14 +144,25 @@ public class WebkitSpeechRecognition extends Service implements SpeechRecognizer
   public void startListening() {
     log.info("Start listening event seen.");
     this.listening = true;
+    this.startListeningAtSpeakEnd = true;
     broadcastState();
   }
+
+  /*
+   * public void startListening(boolean enableListenRestart) {
+   * setAutoListenAtSpeakEnd(true); startListening(); }
+   */
 
   @Override
   public void stopListening() {
     log.info("Stop listening event seen.");
     this.listening = false;
     broadcastState();
+  }
+
+  public void stopListening(boolean disableListenRestart) {
+    setAutoListenAtSpeakEnd(!disableListenRestart);
+    stopListening();
   }
 
   public void setLanguage(String language) {
@@ -173,6 +185,10 @@ public class WebkitSpeechRecognition extends Service implements SpeechRecognizer
 
   public boolean getautoListen() {
     return this.autoListen;
+  }
+
+  public void setAutoListenAtSpeakEnd(boolean startAtEnd) {
+    this.startListeningAtSpeakEnd = startAtEnd;
   }
 
   /**
@@ -223,7 +239,11 @@ public class WebkitSpeechRecognition extends Service implements SpeechRecognizer
     // need to subscribe to this in the webgui
     // so we can resume listening.
     this.speaking = false;
-    startListening();
+    if (this.startListeningAtSpeakEnd) {
+      startListening();
+    } else {
+      log.info("Speaking ended, but listening not restarted because startListeningAtSpeakEnd is set to false");
+    }
   }
 
   public static void main(String[] args) {
@@ -231,7 +251,8 @@ public class WebkitSpeechRecognition extends Service implements SpeechRecognizer
 
     try {
       Runtime.start("webgui", "WebGui");
-      WebkitSpeechRecognition w = (WebkitSpeechRecognition) Runtime.start("webkitspeechrecognition", "WebkitSpeechRecognition");
+      WebkitSpeechRecognition w = (WebkitSpeechRecognition) Runtime.start("webkitspeechrecognition",
+          "WebkitSpeechRecognition");
       w.setStripAccents(true);
     } catch (Exception e) {
       Logging.logError(e);

@@ -1,13 +1,13 @@
 angular.module('mrlapp.service.WebkitSpeechRecognitionGui', [])
 .controller('WebkitSpeechRecognitionGuiCtrl', ['$scope', '$log', 'mrl', function($scope, $log, mrl) {
     $log.info('WebkitSpeechRecognitionGuiCtrl');
-    
-    
+
+
     var _self = this;
     var msg = this.msg;
-    
-    
-    // Ok we want to have the language drop down.. and populate the 
+
+
+    // Ok we want to have the language drop down.. and populate the
     // possible languages here.
     // TODO: expand out the full set of langauges here.  (make it easy
     // the dialect & language merged as simple key/value pairs.
@@ -18,159 +18,159 @@ angular.module('mrlapp.service.WebkitSpeechRecognitionGui', [])
         {
             id: 'en-US',
             name: "English - United States"
-        }, 
+        },
         {
             id: 'en-GB',
             name: "English - British"
-        }, 
+        },
         {
             name: 'Afrikaans',
             id: 'af-ZA'
-        }, 
+        },
         {
             name: 'Bahasa Indonesia',
             id: 'id-ID'
-        }, 
+        },
         {
             name: 'Bahasa Melayu',
             id: 'ms-MY'
-        }, 
+        },
         {
             name: 'Català',
             id: 'ca-ES'
-        }, 
+        },
         {
             name: 'Čeština',
             id: 'cs-CZ'
-        }, 
+        },
         {
             name: 'Dansk',
             id: 'da-DK'
-        }, 
+        },
         {
             name: 'Deutsch',
             id: 'de-DE'
-        }, 
+        },
         {
             name: 'English - Australia',
             id: 'en-AU'
-        }, 
+        },
         {
             name: 'English - Canada',
             id: 'en-CA'
-        }, 
+        },
         {
             name: 'English - India',
             id: 'en-IN'
-        }, 
+        },
         {
             name: 'English - New Zealand',
             id: 'en-NZ'
-        }, 
+        },
         {
             name: 'English - South Africa',
             id: 'en-ZA'
-        }, 
+        },
         {
             name: 'English - United Kingdom',
             id: 'en-GB'
-        }, 
+        },
         {
             name: 'English - United States',
             id: 'en-US'
-        }, 
+        },
         {
             name: 'Español - Argentina',
             id: 'es-AR'
-        }, 
+        },
         {
             name: 'Español - Bolivia',
             id: 'es-BO'
-        }, 
+        },
         {
             name: 'Español - Chile',
             id: 'es-CL'
-        }, 
+        },
         {
             name: 'Español - Colombia',
             id: 'es-CO'
-        }, 
+        },
         {
             name: 'Español - Costa Rica',
             id: 'es-CR'
-        }, 
+        },
         {
             name: 'Español - Ecuador',
             id: 'es-EC'
-        }, 
+        },
         {
             name: 'Español - El Salvador',
             id: 'es-SV'
-        }, 
+        },
         {
             name: 'Español - España',
             id: 'es-ES',
-        }, 
+        },
         {
             name: 'Español - Estados Unidos',
             id: 'es-US'
-        }, 
+        },
         {
             name: 'Español - Guatemala',
             id: 'es-GT'
-        }, 
+        },
         {
             name: 'Español - Honduras',
             id: 'es-HN'
-        }, 
+        },
         {
             name: 'Español - México',
             id: 'es-MX'
-        }, 
+        },
         {
             name: 'Español - Nicaragua',
             id: 'es-NI'
-        }, 
+        },
         {
             name: 'Español - Panamá',
             id: 'es-PA'
-        }, 
+        },
         {
             name: 'Español - Paraguay',
             id: 'es-PY'
-        }, 
+        },
         {
             name: 'Español - Perú',
             id: 'es-PE'
-        }, 
+        },
         {
             name: 'Español - Puerto Rico',
             id: 'es-PR'
-        }, 
+        },
         {
             name: 'Español - República Dominicana',
             id: 'es-DO'
-        }, 
+        },
         {
             name: 'Español - Uruguay',
             id: 'es-UY'
-        }, 
+        },
         {
             name: 'Español - Venezuela',
             id: 'es-VE'
-        }, 
+        },
         {
             name: 'Euskara',
             id: 'eu-ES'
-        }, 
+        },
         {
             name: 'Filipino',
             id: 'fil-PH'
-        }, 
+        },
         {
             name: 'Français',
             id: 'fr-FR'
-        }, 
+        },
         {
             name: 'Galego',
             id: 'gl-ES'
@@ -178,131 +178,131 @@ angular.module('mrlapp.service.WebkitSpeechRecognitionGui', [])
         {
             name: 'Hindi - हिंदी',
             id: 'hi-IN'
-        },         
+        },
         {
             name: 'Hrvatski',
             id: 'hr_HR'
-        }, 
+        },
         {
             name: 'IsiZulu',
             id: 'zu-ZA'
-        }, 
+        },
         {
             name: 'Íslenska',
             id: 'is-IS'
-        }, 
+        },
         {
             name: 'Italiano - Italia',
             id: 'it-IT'
-        }, 
+        },
         {
             name: 'Italiano - Svizzera',
             id: 'it-CH'
-        }, 
+        },
         {
             name: 'Lietuvių',
             id: 'lt-LT'
-        }, 
+        },
         {
             name: 'Magyar',
             id: 'hu-HU'
-        }, 
+        },
         {
             name: 'Nederlands',
             id: 'nl-NL'
-        }, 
+        },
         {
             name: 'Norsk bokmål',
             id: 'nb-NO'
-        }, 
+        },
         {
             name: 'Polski',
             id: 'pl-PL'
-        }, 
+        },
         {
             name: 'Português - Brasil',
             id: 'pt-BR'
-        }, 
+        },
         {
             name: 'Português - Portugal',
             id: 'pt-PT'
-        }, 
+        },
         {
             name: 'Română',
             id: 'ro-RO'
-        }, 
+        },
         {
             name: 'Slovenščina',
             id: 'sl-SI'
-        }, 
+        },
         {
             name: 'Slovenčina',
             id: 'sk-SK'
-        }, 
+        },
         {
             name: 'Suomi',
             id: 'fi-FI'
-        }, 
+        },
         {
             name: 'Svenska',
             id: 'sv-SE'
-        }, 
+        },
         {
             name: 'Tiếng Việt',
             id: 'vi-VN'
-        }, 
+        },
         {
             name: 'Türkçe',
             id: 'tr-TR'
-        }, 
+        },
         {
             name: 'Ελληνικά',
             id: 'el-GR'
-        }, 
+        },
         {
             name: 'български',
             id: 'bg-BG'
-        }, 
+        },
         {
             name: 'Pусский',
             id: 'ru-RU'
-        }, 
+        },
         {
             name: 'Српски',
             id: 'sr-RS'
-        }, 
+        },
         {
             name: 'Українська',
             id: 'uk-UA'
-        }, 
+        },
         {
             name: '한국어',
             id: 'ko-KR'
-        }, 
+        },
         {
             name: '中文 - 普通话 (中国大陆)',
             id: 'cmn-Hans-CN'
-        }, 
+        },
         {
             name: '中文 - 普通话 (香港)',
             id: 'cmn-Hans-HK'
-        }, 
+        },
         {
             name: '中文 - 中文 (台灣)',
             id: 'cmn-Hant-TW'
-        }, 
+        },
         {
             name: '中文 - 粵語 (香港)',
             id: 'yue-Hant-HK'
-        }, 
+        },
         {
             name: '日本語',
             id: 'ja-JP'
-        }, 
+        },
         {
             name: 'हिन्दी',
             id: 'hi-IN'
-        }, 
+        },
         {
             name: 'ภาษาไทย',
             id: 'th-TH'
@@ -314,6 +314,7 @@ angular.module('mrlapp.service.WebkitSpeechRecognitionGui', [])
         }
     };
     continuous = true;
+    startListeningAtSpeakEnd = true;
     clickedFromWebGui = false;
     this.updateState = function(service) {
         $scope.service = service;
@@ -324,7 +325,8 @@ angular.module('mrlapp.service.WebkitSpeechRecognitionGui', [])
         $scope.lang.selectedOption.id = service.language;
         $scope.current_language = service.language;
         continuous = service.continuous;
-        
+        startListeningAtSpeakEnd = service.startListeningAtSpeakEnd;
+
         if ($scope.service.listening != $scope.recognizing) {
         	$log.info("Change listening state!");
         	// huh!? not initialized  yet?!
@@ -341,7 +343,7 @@ angular.module('mrlapp.service.WebkitSpeechRecognitionGui', [])
         }
     };
     _self.updateState($scope.service);
-    
+
     // when to use $scope or anything?!
     $scope.currResponse = '';
     $scope.utterance = '';
@@ -366,6 +368,7 @@ angular.module('mrlapp.service.WebkitSpeechRecognitionGui', [])
     	$scope.recognition = new webkitSpeechRecognition();
         // config properties on the webkit speech stuff.
         $scope.recognition.continuous = true;
+        $scope.recognition.startListeningAtSpeakEnd = true;
         $scope.recognition.interimResults = true;
         mrl.sendTo($scope.service.name, "startListening");
         // called when $scope.recognition starts.
@@ -377,7 +380,7 @@ angular.module('mrlapp.service.WebkitSpeechRecognitionGui', [])
         mrl.sendTo($scope.service.name, "listeningEvent");
     }
     };
-    
+
     if ($scope.wkavailable){
     // called when there's an error (handles a few cases)
     $scope.recognition.onerror = function(event) {
@@ -411,7 +414,7 @@ angular.module('mrlapp.service.WebkitSpeechRecognitionGui', [])
         ;
     }
     ;
-   
+
     // called when $scope.recognition finishes.
     $scope.recognition.onend = function() {
         mrl.sendTo($scope.service.name, "pauseListening");
@@ -429,10 +432,10 @@ angular.module('mrlapp.service.WebkitSpeechRecognitionGui', [])
             return;
         }
         ;
-    
+
     }
     ;
-    
+
     // called when a result is returned from $scope.recognition
     $scope.recognition.onresult = function(event) {
         // build up a string of the current utterance
@@ -440,20 +443,20 @@ angular.module('mrlapp.service.WebkitSpeechRecognitionGui', [])
         for (var i = event.resultIndex; i < event.results.length; ++i) {
             if (event.results[i].isFinal) {
                 final_transcript += event.results[i][0].transcript;
-                
+
                 $scope.utterance = final_transcript;
                 $scope.$apply();
-                
+
                 $log.info("Recognized Text Time to publish " + $scope.current_text);
                 $scope.service = mrl.getService($scope.service.name);
                 mrl.sendTo($scope.service.name, "recognized", $scope.current_text);
                 mrl.sendTo($scope.service.name, "publishText", $scope.current_text);
-                
+
                 final_transcript = '';
                 interm_transcript = '';
             } else {
                 // we're not at the boundry of speech detection
-                // append this fragment. 
+                // append this fragment.
                 interim_transcript += event.results[i][0].transcript;
             }
             ;
@@ -469,20 +472,20 @@ angular.module('mrlapp.service.WebkitSpeechRecognitionGui', [])
     }
     ;
     } // End of ($scope.wkavailable)
-    
-    
+
+
     $scope.updateLanguage = function() {
         $log.info('WEBKIT Update Language');
-        // Here we need to update the language that we're recognizing.. and probably 
+        // Here we need to update the language that we're recognizing.. and probably
         // publish it back down to the java service.
         mrl.sendTo($scope.service.name, "setLanguage", $scope.lang.selectedOption.id);
     }
-    
+
     // toggle type of button for starting/stopping speech $scope.recognition.
-    $scope.startRecognition = function() {
+    $scope.startRecognition = function(start = true) {
         clickedFromWebGui = true;
         $log.info("Start Recognition clicked.");
-        if ($scope.recognizing) {
+        if ($scope.recognizing || (start==false)) {
             $log.info("Stoppping recognition");
             $scope.recognition.stop();
             return;
@@ -501,11 +504,12 @@ angular.module('mrlapp.service.WebkitSpeechRecognitionGui', [])
         // $scope.$apply();
     }
     ;
-    
-    
+
+
     this.onMsg = function(msg) {
-        
+
         $scope.recognition.continuous = continuous;
+        $scope.recognition.startListeningAtSpeakEnd = startListeningAtSpeakEnd;
         clickedFromWebGui = false;
         $log.info("Webkit Speech Msg !");
         $log.info(msg.method);
@@ -516,11 +520,11 @@ angular.module('mrlapp.service.WebkitSpeechRecognitionGui', [])
             break;
         case 'onOnStartSpeaking':
             $log.info("Started speaking, pausing listening.");
-            $scope.startRecognition();
+            $scope.startRecognition(false);
             break;
         case 'onOnEndSpeaking':
-            $log.info("Stopped speaking, resume listening.");
-            if (!$scope.recognizing) {
+            if (!$scope.recognizing && $scope.recognition.startListeningAtSpeakEnd) {
+                $log.info("Stopped speaking, resume listening.");
                 $scope.startRecognition();
             }
             break;
@@ -531,7 +535,7 @@ angular.module('mrlapp.service.WebkitSpeechRecognitionGui', [])
         ;
     }
     ;
-    
+
     msg.subscribe('onStartSpeaking');
     msg.subscribe('onEndSpeaking');
     msg.subscribe('onStartListening');
