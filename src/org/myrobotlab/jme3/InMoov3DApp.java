@@ -19,6 +19,7 @@ import org.myrobotlab.service.Servo.IKData;
 import org.python.jline.internal.Log;
 
 import com.jme3.app.SimpleApplication;
+import com.jme3.asset.AssetNotFoundException;
 import com.jme3.asset.plugins.FileLocator;
 import com.jme3.font.BitmapFont;
 import com.jme3.font.BitmapText;
@@ -44,6 +45,7 @@ import com.jme3.scene.debug.Arrow;
 import com.jme3.scene.shape.Box;
 import com.jme3.scene.shape.Cylinder;
 import com.jme3.system.AppSettings;
+import com.jme3.texture.Texture;
 import com.jme3.texture.Texture2D;
 import com.jme3.ui.Picture;
 import com.jme3.util.BufferUtils;
@@ -536,7 +538,7 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
     spatial.setName("head");
     node.attachChild(spatial);
     node.setLocalTranslation(new Vector3f(0, 10f, 20));
-    rotationMask = Vector3f.UNIT_Y.mult(-1);
+    rotationMask = Vector3f.UNIT_Y.mult(1);
     node.setUserData("rotationMask_x", rotationMask.x);
     node.setUserData("rotationMask_y", rotationMask.y);
     node.setUserData("rotationMask_z", rotationMask.z);
@@ -654,7 +656,13 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
     vertexBuffer = mapMesh.getBuffer(Type.Position);
     geom = new Geometry("MapMesh", mapMesh);
     mat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-    mat.setTexture("ColorMap", assetManager.loadTexture("Textures/mappa.jpg"));
+    Texture mapTexture;
+    try {
+      mapTexture = assetManager.loadTexture("Textures/mappa.png");
+    } catch (AssetNotFoundException e) {
+        mapTexture = assetManager.loadTexture("Textures/mappa.jpg");
+    }
+    mat.setTexture("ColorMap", mapTexture);
     //mat.setTexture("ColorMap", assetManager.loadTexture("Textures/checker.jpg"));
     geom.setMaterial(mat);
     //geom.rotate(0f, 0f, 0f);
@@ -720,7 +728,7 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
         }
         float rotationTick = (float) (tpf * velocity);
         // Check if destination reached and if so update to final position
-        if (Math.abs(rotationTick) > Math.abs(remainingMovementAngle)) {
+        if ((Math.abs(rotationTick) >= Math.abs(remainingMovementAngle)) || (Math.abs(remainingMovementAngle) < 0.5f)) {
           rotationTick = remainingMovementAngle;
           endedMovement = true;
         }

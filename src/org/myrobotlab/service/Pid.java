@@ -225,6 +225,8 @@ public class Pid extends Service {
    */
   public void init(String key) {
     PidData piddata = data.get(key);
+    // Reset output to center
+    piddata.output = piddata.outCenter;
     piddata.ITerm = piddata.output;
     piddata.lastInput = piddata.input;
     if (piddata.ITerm > piddata.outMax) {

@@ -123,6 +123,7 @@ public class Tracking extends Service {
   public int updateModulus = 1;
   public long cnt = 0;
   public long latency = 0;
+  public int absoluteUpdateInterval = 5;
 
   // MRL points
   public Point2Df lastPoint = new Point2Df();
@@ -137,11 +138,13 @@ public class Tracking extends Service {
    */
   //TODO: should be a function of the current frame rate  for now, require at least 1.
   int faceFoundFrameCount = 0;
-  int faceFoundFrameThreshold = 4;
+  public int faceFoundFrameThreshold = 4;
   int faceLostFrameCount = 0;
-  int faceLostFrameThreshold = 4;
-  int faceLostEventFrameThreshold = 20 * 5; // 5 seconds @ 20 fps
+  public int faceLostFrameThreshold = 10;
+  public int faceLostEventFrameThreshold = 30 * 10; // 5 seconds @ 30 fps
   boolean lostTrackTriggerEnabled = false;
+
+  public boolean absoluteTracking = false;
   // -------------- System Specific Initialization End --------------
 
   boolean scan = false;
@@ -302,6 +305,11 @@ public class Tracking extends Service {
 
   public void rest() {
     log.info("rest");
+
+    for (String axisStr : axis) {
+      pid.init(axisStr);
+    }
+
     if (controller == null) {
       return;
     }
@@ -355,6 +363,10 @@ public class Tracking extends Service {
     setState(STATE_IDLE);
   }
 
+  public void resumeFaceDetect() {
+    setState(STATE_FACE_DETECT);
+  }
+
   public OpenCVData onOpenCVData(OpenCVData data) {
     // log.info("OnOpenCVData");
     switch (state) {
@@ -377,7 +389,7 @@ public class Tracking extends Service {
 
             // dead zone and state shift
             // TODO # of frames for verification
-            log.info("found face");
+            log.debug("found face");
             invoke("foundFace", data);
             // ensure bumpless transfer ??
             // pid.init("x");
@@ -395,9 +407,11 @@ public class Tracking extends Service {
               TrackingServoData x = servoControls.get("x");
               TrackingServoData y = servoControls.get("y");
               double xpos = x.servoControl.getPos();
-              if (xpos + x.scanStep >= x.servoControl.getMaxInput() && x.scanStep > 0 || xpos + x.scanStep <= x.servoControl.getMinInput() && x.scanStep < 0) {
+              if (xpos + x.scanStep >= x.servoControl.getMaxInput() && x.scanStep > 0
+                  || xpos + x.scanStep <= x.servoControl.getMinInput() && x.scanStep < 0) {
                 x.scanStep *= -1;
-                double newY = y.servoControl.getMinInput() + (Math.random() * (y.servoControl.getMaxInput() - y.servoControl.getMinInput()));
+                double newY = y.servoControl.getMinInput()
+                    + (Math.random() * (y.servoControl.getMaxInput() - y.servoControl.getMinInput()));
                 y.servoControl.moveTo(newY);
               }
               x.servoControl.moveTo(xpos + x.scanStep);
@@ -543,7 +557,7 @@ public class Tracking extends Service {
 
     // describe this time delta
     latency = System.currentTimeMillis() - targetPoint.timestamp;
-    log.info("Update Tracking Point {}", targetPoint);
+    log.debug("Update Tracking Point {}", targetPoint);
 
     // pid.setInput("x", targetPoint.x);
     // pid.setInput("y", targetPoint.y);
@@ -553,15 +567,22 @@ public class Tracking extends Service {
     // if I'm at my min & and the target is further min - don't compute
     // pid
     for (TrackingServoData tsd : servoControls.values()) {
-      pid.setInput(tsd.axis, targetPoint.get(tsd.axis));
-      if (pid.compute(tsd.name)) {
-        // TODO: verify this.. we want the pid output to be the input for our servo..min/max are input min/max on the servo to ensure proper scaling 
-        // of values between services.
-        tsd.currentServoPos += pid.getOutput(tsd.name);
-        tsd.servoControl.moveTo(tsd.currentServoPos);
-        tsd.currentServoPos = tsd.servoControl.getPos();
+      if (!absoluteTracking) {
+        pid.setInput(tsd.axis, targetPoint.get(tsd.axis));
+        if (pid.compute(tsd.name)) {
+          // TODO: verify this.. we want the pid output to be the input for our servo..min/max are input min/max on the servo to ensure proper scaling 
+          // of values between services.
+          tsd.currentServoPos += pid.getOutput(tsd.name);
+          tsd.servoControl.moveTo(tsd.currentServoPos);
+          tsd.currentServoPos = tsd.servoControl.getPos();
+        } else {
+          log.warn("{} data under-run", tsd.servoControl.getName());
+        }
       } else {
-        log.warn("{} data under-run", tsd.servoControl.getName());
+        if (cnt % absoluteUpdateInterval == 0) {
+          float pos = 90.0f - 50.0f * (targetPoint.get(tsd.axis) - 0.5f);
+          tsd.servoControl.moveTo(pos);
+        }
       }
     }
 
@@ -569,7 +590,7 @@ public class Tracking extends Service {
 
     if (cnt % updateModulus == 0) {
       broadcastState(); // update graphics ?
-      info(String.format("computeX %f computeY %f", pid.getOutput("x"), pid.getOutput("y")));
+      log.debug(String.format("computeX %f computeY %f", pid.getOutput("x"), pid.getOutput("y")));
     }
   }
 
@@ -735,6 +756,10 @@ public class Tracking extends Service {
     }
 
     error("%s doesn't know how to attach a %s", getClass().getSimpleName(), service.getClass().getSimpleName());
+  }
+
+  public void setAbsoluteTracking(boolean value) {
+    this.absoluteTracking = value;
   }
 
   public static void main(String[] args) {
