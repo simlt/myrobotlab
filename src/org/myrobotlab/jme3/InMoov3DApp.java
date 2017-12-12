@@ -4,6 +4,8 @@ import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -13,10 +15,13 @@ import org.myrobotlab.jme3.interfaces.IntegratedMovementInterface;
 import org.myrobotlab.kinematics.CollisionItem;
 import org.myrobotlab.kinematics.Map3DPoint;
 import org.myrobotlab.kinematics.Point;
+import org.myrobotlab.logging.LoggerFactory;
 import org.myrobotlab.math.Mapper;
+import org.myrobotlab.service.MapService;
 import org.myrobotlab.service.Servo;
 import org.myrobotlab.service.Servo.IKData;
 import org.python.jline.internal.Log;
+import org.slf4j.Logger;
 
 import com.jme3.app.SimpleApplication;
 import com.jme3.asset.AssetNotFoundException;
@@ -55,7 +60,7 @@ import com.jme3.util.BufferUtils;
  */
 public class InMoov3DApp extends SimpleApplication implements IntegratedMovementInterface {
   private transient HashMap<String, Node> nodes = new HashMap<String, Node>();
-  private Queue<IKData> eventQueue = new ConcurrentLinkedQueue<IKData>();
+  private Map<String, IKData> eventMap = new ConcurrentHashMap<>();
   private transient HashMap<String, Node> servoToNode = new HashMap<String, Node>();
   private HashMap<String, Mapper> maps = new HashMap<String, Mapper>();
   private transient Service service = null;
@@ -63,6 +68,8 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
   private transient Queue<BitmapText> bitmapTextQueue = new ConcurrentLinkedQueue<BitmapText>();
   private transient Queue<Picture> pictureQueue = new ConcurrentLinkedQueue<Picture>();
   private transient Queue<Picture> batteryQueue = new ConcurrentLinkedQueue<Picture>();
+  
+  Logger log = LoggerFactory.getLogger(InMoov3DApp.class.getCanonicalName());
 
   private HashMap<String, Geometry> shapes = new HashMap<String, Geometry>();
   private boolean updateCollisionItem;
@@ -86,6 +93,7 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
   protected Texture2D textureBat[] = new Texture2D[101];
   protected VertexBuffer vertexBuffer;
   protected Mesh mapMesh;
+  protected boolean fullScreen = false;
   
   private final static boolean debugAxis = false; // Show debug axis on pieces
 
@@ -692,7 +700,7 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
    */
 
   public void updatePosition(IKData event) {
-    eventQueue.add(event);
+    eventMap.put(event.name, event);
   }
 
   public void simpleUpdate(float tpf) {
@@ -707,9 +715,9 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
     }
 
     // Handle servo update (with speed)
-    Iterator<IKData> eventItr = eventQueue.iterator();
+    Iterator<Entry<String, IKData>> eventItr = eventMap.entrySet().iterator();
     while (eventItr.hasNext()) {
-      IKData event = eventItr.next();
+      IKData event = eventItr.next().getValue();
       boolean endedMovement = false;
       if (servoToNode.containsKey(event.name)) {
         Node node = servoToNode.get(event.name);
@@ -732,6 +740,7 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
           rotationTick = remainingMovementAngle;
           endedMovement = true;
         }
+        // log.info(String.format("Servo move %s: v = %.2f t = %.2f c = %.2f tick = %.2f END: %s", event.name, velocity, targetAngle, currentAngle, rotationTick, Boolean.toString(endedMovement)));
         Vector3f angle = rotMask.mult((float) (rotationTick * Math.PI / 180));
         node.rotate(angle.x, angle.y, angle.z);
         node.setUserData("currentAngle", currentAngle + rotationTick);
@@ -880,12 +889,18 @@ public class InMoov3DApp extends SimpleApplication implements IntegratedMovement
       }
       // seem no worky
       else if (name.equals("FullScreen")) {
-        if (settings.isFullscreen()) {
-          settings.setFullscreen(false);
+        if (fullScreen) {
+          //settings.setFullscreen(false);
+          settings.setResolution(800, 600);
         } else {
-          settings.setFullscreen(true);
+          //settings.setFullscreen(true);
+          settings.setResolution(1080, 1920);
         }
+        fullScreen = !fullScreen;
         restart();
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException e) { }
       }
     }
   };

@@ -1935,9 +1935,11 @@ public class InMoov extends Service {
   public Boolean VinmoovFullScreen = false;
   public String VinmoovBackGroundColor = "DarkGray";
 
-  public int VinmoovWidth = (int) (800 * 1.5);
-  public int VinmoovHeight = (int) (600 * 1.5);
-  private Boolean debugVinmoov = true;
+  public int VinmoovWidth = 1200; //(int) (800);
+  public int VinmoovHeight = 1920; //(int) (600);
+  //public int VinmoovWidth = 800;
+  //public int VinmoovHeight = 600;
+  private Boolean debugVinmoov = false;
 
   // show some infos to jme screen
   public void setLeftArduinoConnected(boolean param) {

@@ -123,7 +123,7 @@ public class Tracking extends Service {
   public int updateModulus = 1;
   public long cnt = 0;
   public long latency = 0;
-  public int absoluteUpdateInterval = 5;
+  public int absoluteUpdateInterval = 4;
 
   // MRL points
   public Point2Df lastPoint = new Point2Df();
